@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JESSMATH: ELITE DEFENSE</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700;900&display=swap" rel="stylesheet">
+    
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="cinematic-intro">
+        <div class="space-bg"></div>
+        <div class="stars-1"></div>
+        <div class="stars-2"></div>
+        <div class="nebula-layer"></div>
+        
+        <div id="war-container"></div> 
+        
+        <div class="intro-ui">
+            <div class="logo-wrapper">
+                <h1 class="defender-logo" data-text="MATH DEFENDER">MATH DEFENDER</h1>
+                <div class="logo-scanline"></div>
+            </div>
+            <div class="subtitle-text">HUMANITY'S LAST STAND</div>
+            
+            <div class="loading-system">
+                <div class="tech-bar">
+                    <div class="tech-fill"></div>
+                </div>
+                <div class="loading-status">ESTABLISHING UPLINK...</div>
+            </div>
+        </div>
+        
+        <div class="screen-flash"></div>
+        <div class="vignette-overlay"></div>
+    </div>
+
+    <div id="story-overlay" class="hidden">
+        <div class="scanline-bg"></div>
+        
+        <div class="comm-panel">
+            <div class="comm-header">
+                <span class="blink">● LIVE FEED</span>
+                <span>SECURE CHANNEL: ALPHA-1</span>
+            </div>
+            
+            <div class="comm-content">
+                <div class="avatar-box">
+                    <div class="sound-wave">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    </div>
+                    <div class="commander-label">CMDR. VECTOR</div>
+                </div>
+
+                <div class="dialogue-box">
+                    <p id="story-text"></p>
+                    <div id="tutorial-visual" class="hidden"></div>
+                </div>
+            </div>
+
+            <div class="comm-footer">
+                <button class="btn text-only" onclick="window.skipStory()">SKIP BRIEFING</button>
+                <button class="btn secondary" id="next-story-btn" onclick="window.nextStoryStep()">ACKNOWLEDGE [ENTER]</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-wrapper">
+        
+        <canvas id="bgCanvas"></canvas> 
+        <div id="glitch-overlay" class="hidden"></div>
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-layer">
+            <div id="start-countdown" class="hidden" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-family:'Orbitron'; font-size:150px; color:#00e5ff; text-shadow:0 0 50px cyan; z-index:9999; pointer-events:none;">3</div>
+            
+            <div id="hud-top">
+                <div class="hud-group left">
+                    <div class="hud-box">
+                        <span class="label">LEVEL</span>
+                        <span id="level-txt" class="value neon-blue">1</span>
+                    </div>
+                    <div id="xp-bar-container">
+                        <div id="xp-bar-fill"></div>
+                    </div>
+                </div>
+
+                <div class="hud-group center">
+                    <div class="hud-box">
+                        <span class="label">HEALTH</span>
+                        <span id="health-txt" class="value neon-red">100%</span>
+                    </div>
+                    <div id="boss-warning" class="hidden">⚠️ BOSS DETECTED ⚠️</div>
+                </div>
+
+                <div class="hud-group right">
+                    <div class="hud-box">
+                        <span class="label">SCORE</span>
+                        <span id="score-txt" class="value neon-green">0</span>
+                    </div>
+                    <div class="hud-box">
+                        <span class="label">COINS</span>
+                        <span class="value neon-gold">💰 <span id="coins-txt">200</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="boss-hud" class="hidden">
+                <span id="boss-name">MOTHERSHIP OMEGA</span>
+                <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
+            </div>
+
+            <div id="side-feed">
+                <div id="live-leaderboard">
+                    <h4>TOP AGENTS</h4>
+                    <ul id="leaderboard-list"></ul>
+                </div>
+                <div id="battle-feed"></div>
+            </div>
+
+            <div id="hud-bottom">
+                <div class="controls-left">
+                    <button class="icon-btn" onclick="window.toggleMute()"><span id="mute-btn">🔊</span></button>
+                    <button class="icon-btn" onclick="window.toggleVoice()"><span id="mic-btn">🎙️</span></button>
+                    <button class="icon-btn" onclick="window.togglePause()">⏸️</button>
+                    <button class="icon-btn" id="btn-help" onclick="window.toggleHelp()" style="border-color: #ffd700; color: #ffd700;">✋</button>
+                </div>
+                
+                <div id="input-container">
+                    <form id="game-form" onsubmit="return false;">
+                        <input type="tel" id="player-input" autocomplete="off" placeholder="AWAITING INPUT..." autofocus>
+                    </form>
+                    <div class="input-hint">TYPE ANSWER & ENTER</div>
+                </div>
+
+                <div class="controls-right">
+                    <div class="skill-icon">⚡ EMP [SPACE]</div>
+                    <div class="skill-icon">⏳ SLOW [SHIFT]</div>
+                </div>
+            </div>
+
+            <div id="virtual-numpad">
+                <div class="numpad-row">
+                    <button class="num-btn" onclick="window.pressKey('1')">1</button>
+                    <button class="num-btn" onclick="window.pressKey('2')">2</button>
+                    <button class="num-btn" onclick="window.pressKey('3')">3</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="num-btn" onclick="window.pressKey('4')">4</button>
+                    <button class="num-btn" onclick="window.pressKey('5')">5</button>
+                    <button class="num-btn" onclick="window.pressKey('6')">6</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="num-btn" onclick="window.pressKey('7')">7</button>
+                    <button class="num-btn" onclick="window.pressKey('8')">8</button>
+                    <button class="num-btn" onclick="window.pressKey('9')">9</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="num-btn clear-btn" onclick="window.pressClear()">C</button>
+                    <button class="num-btn" onclick="window.pressKey('0')">0</button>
+                    <button class="num-btn" onclick="window.pressKey('-')">-</button>
+                    <button class="num-btn fire-btn" onclick="window.pressEnter()">🔥</button>
+                </div>
+            </div>
+
+            <div id="combo-container" class="hidden">
+                <div id="combo-label">COMBO</div>
+                <div id="combo-value">x0</div>
+            </div>
+
+            <div id="training-modal" class="modal hidden">
+                <div class="modal-content neon-border" style="border-color: #00e5ff; box-shadow: 0 0 40px rgba(0, 229, 255, 0.2);">
+                    <h2 style="color: #00e5ff; font-family: 'Orbitron';">N.E.X.U.S. SIMULATION</h2>
+                    <p class="subtitle">TRAINING MODULES ACTIVE</p>
+                    
+                    <div id="ai-question-box" style="margin: 20px 0; padding: 20px; background: rgba(0,0,0,0.5); border: 1px solid #334; border-radius: 10px;">
+                        <h1 id="train-q" style="font-size: 40px; margin: 0; color: white;">24 + 15 = ?</h1>
+                    </div>
+
+                    <div id="ai-options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;"></div>
+
+                    <div id="ai-tip-box" class="hidden" style="background: rgba(255, 170, 0, 0.1); padding: 10px; border-left: 3px solid orange; text-align: left; margin-bottom: 20px;">
+                        <strong style="color: orange;">TACTICAL TIP:</strong>
+                        <span id="train-tip" style="color: #ccc; font-size: 14px;">Break it down: 20+10 is 30, 4+5 is 9.</span>
+                    </div>
+
+                    <button class="btn text-only" onclick="window.closeTraining()">END SIMULATION</button>
+                </div>
+            </div>
+
+            <div id="start-modal" class="modal">
+                <div class="modal-content neon-border">
+                    <h1 class="game-title">JESSMATH <span class="highlight">ELITE</span></h1>
+                    
+                    <div id="auth-section">
+                        <div class="auth-tabs">
+                            <button class="tab-btn active" onclick="window.switchTab('login')">LOGIN</button>
+                            <button class="tab-btn" onclick="window.switchTab('register')">REGISTER</button>
+                        </div>
+
+                        <div id="login-form" class="auth-form">
+                            <input type="email" id="login-email" class="auth-input" placeholder="EMAIL ADDRESS">
+                            <input type="password" id="login-pass" class="auth-input" placeholder="PASSWORD">
+                            <button class="btn primary" onclick="window.loginUser()">ACCESS TERMINAL</button>
+                        </div>
+
+                        <div id="register-form" class="auth-form hidden">
+                            <input type="text" id="reg-username" class="auth-input" placeholder="CODENAME (AGENT NAME)" maxlength="12">
+                            <input type="email" id="reg-email" class="auth-input" placeholder="EMAIL ADDRESS">
+                            <input type="password" id="reg-pass" class="auth-input" placeholder="PASSWORD">
+                            <button class="btn secondary" onclick="window.registerUser()">CREATE IDENTITY</button>
+                        </div>
+                        
+                        <p id="auth-msg" style="color: #ff0055; font-size: 12px; margin-top: 10px; height: 15px;"></p>
+                    </div>
+
+                    <div id="profile-section" class="hidden">
+                        <div class="rank-display">
+                            <div id="rank-icon">🔰</div>
+                            <div>
+                                <h2 id="agent-name-display" style="margin:0; color:#00e5ff;">AGENT</h2>
+                                <small id="rank-title" style="color:gold; letter-spacing:2px;">CADET</small>
+                            </div>
+                        </div>
+                        
+                        <div class="xp-container" style="width:100%; background:#222; height:10px; border-radius:5px; margin: 15px 0; overflow:hidden; border:1px solid #444;">
+                            <div id="profile-xp-fill" style="width:0%; height:100%; background:linear-gradient(90deg, #00e5ff, #00ff41);"></div>
+                        </div>
+                        <small id="xp-text" style="color:#888;">0 / 1000 XP</small>
+
+                        <div class="menu-actions" style="margin-top: 20px; display: block;">
+                            <div class="main-menu-grid">
+                                <button class="btn primary" onclick="window.startSolo()">🚀 DEPLOY MISSION</button>
+                                <button class="btn secondary" onclick="window.showMultiplayerMenu()">⚔️ MULTIPLAYER</button>
+                                <button class="btn secondary" onclick="window.openCodex()" style="border-color: #00ff41; color: #00ff41;">📘 JESSBOOK</button>
+
+                                <button class="btn secondary" onclick="window.openClassSelection()" style="border-color: #ffd700; color: #ffd700;">👨‍🏫 CLASS MODE</button>
+                                <button class="btn secondary" onclick="window.showLeaderboard()">🏆 LEADERBOARD</button>
+                                
+                                <button class="btn secondary" onclick="window.openShop()">🛠️ ARMORY (SHOP)</button>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <button class="btn text-only" onclick="window.logoutUser()" style="color: #ff0055; font-size: 12px;">LOGOUT SYSTEM</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="guest-option" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
+                        <button class="btn text-only" style="font-size: 10px; color: #666;" onclick="window.playAsGuest()">PLAY AS GUEST (NO SAVE)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mission-config-modal" class="modal hidden">
+                <div class="modal-content neon-border" style="width: 500px;">
+                    <h2 style="color: #00e5ff; font-family: 'Orbitron';">MISSION BRIEFING</h2>
+                    <p class="subtitle">CONFIGURE TACTICAL PARAMETERS</p>
+
+                    <div style="text-align: left; margin: 20px 0;">
+                        <label style="color: #ccc; display: block; margin-bottom: 15px; font-size: 14px; letter-spacing: 2px;">SELECT OPERATIONS:</label>
+                        <div class="config-options" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <label class="op-label"><input type="checkbox" id="op-add" checked><span class="checkmark"></span> [ + ] ADD</label>
+                            <label class="op-label"><input type="checkbox" id="op-sub"><span class="checkmark"></span> [ - ] SUB</label>
+                            <label class="op-label"><input type="checkbox" id="op-mul"><span class="checkmark"></span> [ × ] MUL</label>
+                            <label class="op-label"><input type="checkbox" id="op-div"><span class="checkmark"></span> [ ÷ ] DIV</label>
+                            <label class="op-label"><input type="checkbox" id="op-alg"><span class="checkmark"></span> [ X ] ALG</label>
+                        </div>
+                    </div>
+
+                    <div style="text-align: left; margin: 30px 0;">
+                        <label style="color: #ccc; display: block; margin-bottom: 15px; font-size: 14px; letter-spacing: 2px;">THREAT LEVEL:</label>
+                        <div class="config-options" style="display: flex; gap: 20px; justify-content: center;">
+                            <label class="diff-label"><input type="radio" name="diff-select" value="easy"><span class="radiomark"></span> EASY</label>
+                            <label class="diff-label"><input type="radio" name="diff-select" value="medium" checked><span class="radiomark"></span> MEDIUM</label>
+                            <label class="diff-label"><input type="radio" name="diff-select" value="hard"><span class="radiomark"></span> HARD</label>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions" style="margin-top: 40px;">
+                        <button class="btn primary" onclick="window.confirmMission()">INITIATE LAUNCH</button>
+                        <button class="btn text-only" onclick="window.cancelMission()">ABORT MISSION</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mp-menu-modal" class="modal hidden">
+                <div class="modal-content neon-border">
+                    <h2>MULTIPLAYER</h2>
+                    
+                    <div class="settings-group">
+                        <h3>SELECT MISSION TYPE</h3>
+                        <div class="radio-group">
+                            <label class="radio-btn">
+                                <input type="radio" name="game-mode" value="vs" checked>
+                                <span>⚔️ 1VS1</span>
+                            </label>
+                            <label class="radio-btn">
+                                <input type="radio" name="game-mode" value="party">
+                                <span>🛡️ TEAM </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="btn primary" onclick="window.createRoom()">CREATE LOBBY</button>
+                    
+                    <div class="join-section">
+                        <input type="text" id="join-code-input" placeholder="ENTER ROOM CODE" maxlength="10">
+                        <button class="btn secondary" onclick="window.joinRoom()">JOIN</button>
+                    </div>
+                    
+                    <button class="btn text-only" onclick="window.goHome()">HOME</button>
+                </div>
+            </div>
+
+            <div id="lobby-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h2 id="lobby-title-text">LOBBY</h2>
+                    <div class="code-display">
+                        <span>MISSION CODE:</span>
+                        <h1 id="room-code-display">----</h1>
+                    </div>
+                    
+                    <div id="lobby-players" class="player-list"></div>
+
+                    <p id="client-wait-msg" class="blink hidden">AWAITING HOST...</p>
+                    <button id="host-start-btn" class="btn primary hidden" onclick="window.hostStartGame()">INITIATE LAUNCH</button>
+                    
+                    <button class="btn text-only" onclick="window.abortStudent()">ABORT CONNECTION</button>
+                </div>
+            </div>
+
+            <div id="leaderboard-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h2>ELITE AGENTS</h2>
+                    <div id="leaderboard-list-modal" class="scrollable-list">Loading...</div>
+                    <button class="btn text-only" onclick="window.goHome()">CLOSE</button>
+                </div>
+            </div>
+
+            <div id="pause-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h2 id="pause-title">SYSTEM PAUSED</h2>
+                    <button id="btn-resume-game" class="btn primary" onclick="window.togglePause()">RESUME</button>
+                    <button class="btn secondary" onclick="window.goHome()">ABORT MISSION</button>
+                </div>
+            </div>
+
+            <div id="report-modal" class="modal hidden">
+                <div class="modal-content neon-border">
+                    <h1 class="neon-red">MISSION FAILED</h1>
+                    <small style="color:#889">SCORE</small>
+                    
+                    <div class="stats-grid" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin: 20px 0;">
+                        <div class="stat-box">
+                            <span id="rep-score" class="value neon-gold" style="font-size:40px">0</span>
+                        </div>
+                        
+                        <div id="mission-debrief-container" style="width: 100%; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 15px 0; margin-top: 10px;">
+                            <h3 id="debrief-rank" style="margin: 0; font-family: 'Orbitron'; letter-spacing: 2px; color: #00e5ff;">ANALYZING...</h3>
+                            <p id="debrief-msg" style="margin: 5px 0 0 0; color: #ccc; font-style: italic; font-size: 14px; font-family: 'Courier New';">
+                                "Connecting to HQ..."
+                            </p>
+                        </div>
+                    </div>
+
+                    <button id="view-mistakes-btn" class="btn tertiary" onclick="window.viewGameHistory()">📂 REVIEW MISSION LOG</button>
+                    <div id="mistakes-log" class="hidden scrollable-list" style="text-align:left; margin-top:10px;"></div>
+
+                    <div class="upload-section" style="margin-top:20px;">
+                        <button id="real-submit-btn" class="btn primary" onclick="window.submitScore()">UPLOAD DATA TO HQ</button>
+                    </div>
+                    
+                    <div class="retry-actions">
+                        <button class="btn secondary" style="border-color: #00e5ff; color: #00e5ff;" onclick="window.startAITraining()">🧠 START AI TRAINING</button>
+                        <button class="btn secondary" onclick="window.startSolo()">RETRY MISSION</button>
+                        <button class="btn text-only" onclick="window.goHome()">RETURN TO BASE</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="win-modal" class="modal hidden">
+                <div class="modal-content neon-border" style="border-color: #00ff41; box-shadow: 0 0 30px #00ff41;">
+                    <h1 class="highlight" style="font-size: 60px; color: #00ff41;">VICTORY!</h1>
+                    <p class="subtitle" style="color: white;">OPPONENT NEUTRALIZED</p>
+                    <div class="stats-grid" style="margin: 20px 0;">
+                        <div class="stat-box">
+                            <small style="color:#889">SCORE</small><br>
+                            <span id="win-score" class="value neon-gold" style="font-size:40px">0</span>
+                        </div>
+                    </div>
+                    <button class="btn primary" onclick="window.submitScore()">UPLOAD VICTORY DATA</button>
+                    <button class="btn secondary" onclick="window.startSolo()">PLAY AGAIN</button>
+                    <button class="btn text-only" onclick="window.goHome()">RETURN TO BASE</button>
+                </div>
+            </div>
+
+            <div id="class-selection-modal" class="modal hidden">
+                <div class="modal-content neon-border" style="width: 450px;">
+                    <h2 style="color: #ffd700; font-family: 'Orbitron';">IDENTIFY ROLE</h2>
+                    <p class="subtitle">WHO IS ACCESSING THE TERMINAL?</p>
+
+                    <div id="role-buttons">
+                        <button class="btn primary" onclick="window.selectTeacherRole()" style="background: #ffd700; color: #000;">👨‍🏫 I AM A TEACHER</button>
+                        <button class="btn secondary" onclick="window.selectStudentRole()" style="border-color: #00ff41; color: #00ff41;">🎓 I AM A STUDENT</button>
+                    </div>
+
+                    <div id="student-class-input-section" class="hidden" style="margin-top: 20px;">
+                        <label style="color: #00ff41; font-weight: bold; display: block; margin-bottom: 10px;">ENTER CLASS CODE:</label>
+                        <input type="text" id="class-code-direct" class="main-input" placeholder="CLASS-XXXX" style="border-color: #00ff41;">
+                        <button class="btn primary" onclick="window.joinClassDirect()" style="background: #00ff41;">CONNECT TO CLASS</button>
+                    </div>
+
+                    <button class="btn text-only" onclick="window.closeClassSelection()" style="margin-top: 15px;">CANCEL</button>
+                </div>
+            </div>
+
+            <div id="classroom-setup-modal" class="modal hidden">
+                <div class="modal-content neon-border" style="width: 650px;">
+                    <h2 class="neon-text">MISSION CONFIGURATION</h2>
+                    
+                    <div class="config-grid" style="grid-template-columns: 1fr; gap: 15px; text-align: left;">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center;">
+                            <label style="text-align: right; color: #00e5ff;">CLASS NAME:</label>
+                            <input type="text" id="class-name-input" class="main-input" placeholder="e.g. Grade 10 - Rizal" style="margin: 0; padding: 10px;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center;">
+                            <label style="text-align: right; color: #00e5ff;">TIME LIMIT:</label>
+                            <div class="stepper-control">
+                                <button onclick="window.adjustTime(-1)" class="step-btn">-</button>
+                                <div id="time-display" data-value="2">02 : 00</div>
+                                <button onclick="window.adjustTime(1)" class="step-btn">+</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center;">
+                            <label style="text-align: right; color: #00e5ff;">ROUNDS:</label>
+                            <div class="stepper-control">
+                                <button onclick="window.adjustRounds(-1)" class="step-btn">-</button>
+                                <div id="rounds-display" data-value="1" style="font-family:'Orbitron'; font-size:28px; color:white; width:120px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">1</div>
+                                <button onclick="window.adjustRounds(1)" class="step-btn">+</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; align-items: center;">
+                            <label style="text-align: right; color: #00e5ff;">THREAT LEVEL:</label>
+                            <div class="diff-select-container">
+                                <label><input type="radio" name="class-diff" value="easy"> EASY</label>
+                                <label><input type="radio" name="class-diff" value="medium" checked> MED</label>
+                                <label><input type="radio" name="class-diff" value="hard"> HARD</label>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 15px;">
+                            <label style="color: #ccc; font-size: 12px; letter-spacing: 2px; display:block; margin-bottom: 10px;">MISSION TYPE</label>
+                            <div class="chip-container" style="display: flex; gap: 10px; justify-content: center;">
+                                <label class="neon-chip"><input type="radio" name="topic-select" value="integers" onclick="window.toggleSubOps()" checked><span>INTEGERS</span></label>
+                                <label class="neon-chip"><input type="radio" name="topic-select" value="algebra" onclick="window.toggleSubOps()"><span>ALGEBRA</span></label>
+                                <label class="neon-chip"><input type="radio" name="topic-select" value="mixed" onclick="window.toggleSubOps()"><span>MIXED</span></label>
+                            </div>
+                        </div>
+
+                        <div id="sub-ops-panel" style="margin-top: 10px; background: rgba(0,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #004455;">
+                            <label style="color: #00e5ff; font-size: 11px; letter-spacing: 1px;">ALLOWED OPERATIONS</label>
+                            <div class="chip-container" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
+                                <label class="neon-chip"><input type="checkbox" id="chk-add" checked><span>[+] ADD</span></label>
+                                <label class="neon-chip"><input type="checkbox" id="chk-sub" checked><span>[-] SUB</span></label>
+                                <label class="neon-chip"><input type="checkbox" id="chk-mul"><span>[×] MUL</span></label>
+                                <label class="neon-chip"><input type="checkbox" id="chk-div"><span>[÷] DIV</span></label>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="menu-actions" style="margin-top: 25px;">
+                        <button class="btn text-only" onclick="window.closeClassroomSetup()">CANCEL</button>
+                        <button class="btn primary" onclick="window.createClassroom()">🛠️ INITIALIZE CLASS</button>
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+        
+        <div id="teacher-dashboard" class="modal hidden">
+            
+            <div class="dashboard-header">
+                <div class="header-status">
+                    <h2 class="neon-text" style="margin: 0; font-size: 24px;">CLASS-<span id="dash-room-code">####</span></h2>
+                    <div id="dash-status" style="color: #00e5ff; font-family: 'Courier New', monospace; margin-top: 5px;">AGENTS: 0</div>
+                </div>
+                
+                <div class="header-controls">
+                    <button id="btn-start-round" class="btn primary" onclick="window.adminStartRound()" style="margin: 0 5px; min-width: 160px;">
+                    ▶ START ROUND
+                    </button>
+    
+                    <button id="btn-freeze-toggle" class="btn secondary hidden" onclick="window.adminFreezeAll()" style="margin: 0 5px; border-color: #00e5ff; color: #00e5ff;">
+                    ❄️ FREEZE
+                    </button>
+    
+                    <button id="btn-stop-round" class="btn danger" onclick="window.adminForceStop()" style="margin: 0 5px;">
+                    ⏹ STOP
+                    </button>
+    
+                    <button id="btn-exit-dash" class="btn text-only" onclick="location.reload()" style="margin-left: 20px;">
+                    EXIT
+                    </button>
+                </div>
+            </div>
+            
+            <div class="dashboard-viewport">
+                
+                <div class="dash-tabs">
+                    <button class="tab-btn active" onclick="window.switchDashTab('podium', event)">🏆 PODIUM</button>
+                    <button class="tab-btn" onclick="window.switchDashTab('grid', event)">🕵️‍♂️ GRID (SPY)</button>
+                    <button class="tab-btn" onclick="window.switchDashTab('reports', event)">📄 REPORTS</button>
+                </div>
+
+                <div id="view-roster" class="dash-view">
+                   <h3 class="neon-text" style="text-align:center; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">
+                    📡 AGENTS ON STANDBY
+                   </h3>
+                   <div id="roster-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                    </div>
+                </div>
+                
+                <div id="view-podium" class="dash-view">
+                    <div class="podium-stage">
+                        <div class="podium-pillar silver">
+                            <div class="crown">🥈</div>
+                            <div id="p2-name" class="p-name">-</div>
+                            <div id="p2-score" class="p-score">0</div>
+                            <div class="pillar-block" style="height: 120px;">2</div>
+                        </div>
+                        <div class="podium-pillar gold">
+                            <div class="crown">👑</div>
+                            <div id="p1-name" class="p-name">-</div>
+                            <div id="p1-score" class="p-score">0</div>
+                            <div class="pillar-block" style="height: 160px;">1</div>
+                        </div>
+                        <div class="podium-pillar bronze">
+                            <div class="crown">🥉</div>
+                            <div id="p3-name" class="p-name">-</div>
+                            <div id="p3-score" class="p-score">0</div>
+                            <div class="pillar-block" style="height: 90px;">3</div>
+                        </div>
+                    </div>
+                    
+                    <div class="runner-ups-container">
+                        <h3 style="color: #888; border-bottom: 1px solid #333; padding-bottom: 10px;">RUNNER UPS</h3>
+                        <div id="podium-list-body" class="runner-ups-list"></div>
+                    </div>
+                </div>
+
+                <div id="view-grid" class="dash-view hidden">
+                    <div id="spy-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; padding: 20px;"></div>
+                </div>
+
+                <div id="view-reports" class="dash-view hidden" style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <div class="stat-box">AVG SCORE: <span id="rep-avg-score" style="color:#ffd700">0</span></div>
+                        <div class="stat-box">AVG ACCURACY: <span id="rep-avg-acc" style="color:#00ff41">0%</span></div>
+                        <button class="btn secondary" onclick="window.exportToCSV()" style="margin:0;">💾 EXPORT CSV</button>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="color: #888; border-bottom: 2px solid #444;">
+                                <th style="padding: 10px;">AGENT</th>
+                                <th style="padding: 10px;">ROUND</th>
+                                <th style="padding: 10px;">TOTAL</th>
+                                <th style="padding: 10px;">ACC %</th>
+                                <th style="padding: 10px;">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-list-body"></tbody>
+                    </table>
+                </div>
+
+            </div> 
+        </div> 
+        
+        <div id="awarding-modal" class="modal hidden" style="z-index: 100000;">
+            <div class="modal-content neon-border" style="width: 800px; max-width: 95%;">
+                <h1 class="neon-gold" style="font-size: 50px; margin-bottom: 10px;">🏆 MISSION ACCOMPLISHED 🏆</h1>
+                <p class="subtitle">CLASS PERFORMANCE REPORT</p>
+
+                <div id="winners-podium" style="display: flex; justify-content: center; gap: 20px; margin-bottom: 30px;"></div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
+                    <div class="stat-box" style="background: rgba(0,255,255,0.05);">
+                        <h4 style="color:#00e5ff; margin:0 0 10px 0;">🧠 CLASS DIAGNOSTICS</h4>
+                        <div id="class-weakness-report" style="font-size: 14px; color: #ccc;">
+                            Analyzing data...
+                        </div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(255,0,85,0.05);">
+                        <h4 style="color:#ff0055; margin:0 0 10px 0;">🚨 NEEDS REINFORCEMENT</h4>
+                        <div id="struggling-students-list" style="font-size: 14px; color: #ccc;">
+                            None detected.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 30px;">
+                    <button class="btn primary" onclick="location.reload()">💾 SAVE & EXIT COMMAND</button>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+
+<div id="shop-modal" class="modal hidden">
+    <div class="modal-content large-modal">
+        <h1 class="neon-blue">THE ARMORY</h1>
+        
+        <div class="shop-header">
+            <div class="shop-balance">
+                STATUS: <span id="shop-coin-display" class="neon-gold">0</span> 🪙
+            </div>
+            <button class="btn text-only" onclick="window.closeShop()">❌ CLOSE</button>
+        </div>
+
+        <div class="shop-tabs">
+            <button class="tab-btn active" onclick="window.switchShopTab('ships')">🛸 SKINS</button>
+            <button class="tab-btn" onclick="window.switchShopTab('upgrades')">⚡ UPGRADES</button>
+            <button class="tab-btn" onclick="window.switchShopTab('fx')">🎨 BATTLE FX</button>
+        </div>
+
+        <div id="shop-filter-container" style="margin-bottom: 15px;">
+            <label style="color: #00e5ff; font-family: 'Rajdhani'; margin-right: 10px;">CATEGORY:</label>
+            <select id="shop-ship-filter" class="main-input" style="width: auto; display: inline-block; padding: 5px;" onchange="window.renderShopGrid()">
+                <option value="turret">PLAYER TURRET</option>
+                <option value="enemy">NORMAL ENEMY</option>
+                <option value="supply">SUPPLY CRATE</option>
+                <option value="boss">BOSS UNIT</option>
+            </select>
+        </div>
+
+        <div id="shop-grid" class="shop-grid">
+            </div>
+    </div>
+</div>
+    <div id="codex-modal" class="modal hidden" style="z-index: 100000; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);">
+    <div class="codex-overlay" onclick="window.closeCodex()"></div>
+    
+    <div class="book-stage">
+        <div id="book" class="book">
+            </div>
+
+        <div class="book-controls">
+            <button class="magic-btn" onclick="window.prevPage()">❮ PREV</button>
+            <button class="magic-btn close" onclick="window.closeCodex()">CLOSE</button>
+            <button class="magic-btn" onclick="window.nextPage()">NEXT ❯</button>
+        </div>
+    </div>
+</div>
+
+    <div id="cinematic-outro" class="hidden">
+        <div class="scanline-bg"></div>
+                <div class="outro-content">
+                 <h1 id="outro-title" class="glitch-text">MISSION TERMINATED</h1>
+                <div class="loader-line"></div>
+          <p id="outro-sub">UPLOADING BLACK BOX DATA...</p>
+        </div>
+    </div>
+    
+    <div class="scanline-overlay"></div>
+    <script type="module" src="script.js"></script>
+
+</body>
+</html>
