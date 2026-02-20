@@ -2467,20 +2467,77 @@ body.dashboard-active #ui-layer {
     background-image: none;
 }
 
-/* --- CONTENT TYPOGRAPHY --- */
-.page-content {
-    padding: 40px;
-    height: 100%;
-    color: #3e2723;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
-    line-height: 1.5;
-    overflow-y: auto;
-}
-.page-content h2 { font-family: 'Cinzel'; color: #800000; border-bottom: 2px solid #800000; font-size: 26px; }
-.page-content code { background: rgba(0,0,0,0.1); padding: 2px 5px; font-family: 'Courier New'; font-weight: bold; color: #a00; }
-.page-num { position: absolute; bottom: 15px; width: 100%; text-align: center; font-size: 14px; color: #886644; }
+/* =========================================
+   📖 JESSBOOK VISUAL FIX (READABILITY)
+   ========================================= */
 
+/* 1. Siguraduhing Dark Brown ang kulay ng papel (Fallback) */
+.front, .back {
+    color: #2c1e16 !important; 
+}
+
+/* 2. Page Content Container */
+.page-content {
+    padding: 35px;
+    text-align: left; /* Gawing Left-align para mas madaling basahin kaysa center */
+    color: #2c1e16 !important; /* Dark Ink Color */
+    font-family: 'Georgia', 'Times New Roman', serif !important; /* Gawing Serif font para mukhang libro */
+    overflow-y: auto; /* Lagyan ng scroll kung mahaba ang lesson */
+    height: 85%; 
+}
+
+/* 3. Force Text Colors & Sizes for Paragraphs and Lists */
+.page-content p, .page-content ul, .page-content ol, .page-content li {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    color: #2c1e16 !important; /* Dark brown ink */
+    font-family: 'Georgia', 'Times New Roman', serif !important;
+    text-shadow: none !important; /* TANGGALIN ANG NEON GLOW */
+}
+
+/* 4. Force Colors & Fonts for Headings (Titles) */
+.page-content h1, .page-content h2, .page-content h3 {
+    font-size: 22px;
+    margin-bottom: 15px;
+    margin-top: 0;
+    color: #3e2723 !important; /* Darker heading color */
+    font-family: 'Georgia', 'Times New Roman', serif !important;
+    text-shadow: none !important;
+    font-weight: bold;
+    border-bottom: 2px solid #8d6e63; /* Guhit sa ilalim ng title */
+    padding-bottom: 8px;
+}
+
+/* 5. Ayusin ang Tip Box readability */
+.tip-box {
+    background: rgba(212, 175, 55, 0.15) !important; /* Transparent Gold Background */
+    border: 2px dashed #d4af37; /* Dashed Gold Border */
+    color: #2c1e16 !important; /* Dark text inside box */
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif !important; /* Iba ang font para sa tips */
+    font-weight: bold;
+    font-size: 13px;
+    margin-top: 20px;
+    text-shadow: none !important;
+}
+
+/* 6. Highlighted/Bold Text (Emphasis) */
+.page-content b, .page-content strong {
+    color: #bf360c !important; /* Reddish Brown para sa important words */
+}
+
+/* 7. Code/Math Examples */
+.page-content code {
+    background: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace !important;
+    color: #d84315 !important; /* Orange-Red para sa numbers */
+    font-weight: bold;
+    border: 1px solid rgba(0,0,0,0.1);
+}
 .tip-box {
     background: rgba(255, 215, 0, 0.2);
     border-left: 4px solid orange;
@@ -2540,4 +2597,544 @@ body.dashboard-active #ui-layer {
     width: 60%; height: 3px;
     background: linear-gradient(90deg, transparent, #ffd700, transparent);
     margin: 20px 0;
+}
+
+/* =========================================
+   📖 JESSBOOK CROPPING FIX
+   ========================================= */
+
+/* 1. I-adjust natin ng konti ang height para hindi sumagad sa page number */
+.page-content {
+    height: 78% !important; /* Mula 85%, binawasan natin para may allowance sa ilalim */
+    overflow-y: auto !important; 
+    padding-right: 15px !important; 
+    /* Tanggalin ang lumang padding-bottom dito, papalitan natin ng mas epektibong paraan */
+}
+
+/* 2. 🟢 THE SECRET FIX: Maglalagay tayo ng "invisible space" sa pinakadulo ng bawat pahina */
+.page-content::after {
+    content: "";
+    display: block;
+    height: 40px; /* Ito ang pipilit sa scrollbar na bumaba pa lagpas sa Tip Box */
+    width: 100%;
+}
+
+/* 3. Siguraduhin na may margin sa ilalim ang tip-box mismo */
+.tip-box {
+    padding: 12px;
+    font-size: 15px; 
+    margin-top: 15px !important;
+    margin-bottom: 20px !important; /* Extra tulak pataas */
+    line-height: 1.5;
+    background: rgba(212, 175, 55, 0.2) !important;
+    color: #2c1e16 !important; 
+    border: 1px dashed #d4af37;
+    text-shadow: none !important;
+}
+
+/* =========================================
+   📊 AGENT DASHBOARD STYLES (REDESIGNED)
+   ========================================= */
+
+/* Badge Styling */
+.badge-icon {
+    width: 50px; height: 50px;
+    border-radius: 8px;
+    background: #111;
+    border: 2px solid #333;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 26px;
+    filter: grayscale(100%);
+    opacity: 0.3;
+    transition: 0.3s;
+}
+.badge-icon.unlocked {
+    filter: none;
+    opacity: 1;
+    border-color: #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+/* Avatar Option Hover */
+.avatar-option {
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: 0.2s;
+    width: 100%;
+    height: auto;
+}
+.avatar-option:hover {
+    border-color: #00e5ff;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+}
+
+/* Table Styling */
+#match-history-body tr {
+    border-bottom: 1px solid #222;
+    transition: background 0.2s;
+}
+#match-history-body tr:nth-child(even) { 
+    background: rgba(255, 255, 255, 0.02); 
+}
+#match-history-body tr:hover { 
+    background: rgba(0, 229, 255, 0.1); 
+}
+#match-history-body td {
+    padding: 12px;
+}
+/* =========================================
+   🖥️ LANDSCAPE & HD SCALING OVERHAUL
+   ========================================= */
+
+/* 1. PALAKIHIN ANG JESSBOOK (CODEX) */
+.book {
+    width: 520px !important;  /* Mula 420px, mas malapad ang pahina */
+    height: 740px !important; /* Mula 600px, mas matangkad */
+}
+.book.opened {
+    transform: translateX(260px) !important; /* Half ng 520px para laging gitna */
+}
+.page-content p, .page-content ul, .page-content ol, .page-content li {
+    font-size: 18px !important; /* Mas malaki at kumportableng basahin */
+    line-height: 1.6 !important;
+}
+
+/* 2. PALAKIHIN ANG STORY / LIVE FEED PANEL */
+.comm-panel {
+    width: 950px !important; /* Wide screen dialogue box */
+    max-width: 95vw !important;
+    padding: 10px;
+}
+.avatar-box {
+    width: 140px !important; /* Mas malaking Profile icon sa story */
+    height: 140px !important;
+}
+#story-text {
+    font-size: 22px !important; /* Mas malaking cinematic text */
+    line-height: 1.8 !important;
+}
+.demo-meteor {
+    font-size: 24px !important; /* Mas kitang-kita na examples */
+    padding: 15px 30px !important;
+}
+
+/* 3. GAWING WIDE (LANDSCAPE) ANG MGA DASHBOARD MODALS */
+.modal-content {
+    max-width: 95vw !important; /* Payagan lumapad ang lahat ng modals */
+}
+
+/* Specific Widths para sa ibang dashboard */
+#mission-config-modal .modal-content,
+#classroom-setup-modal .modal-content {
+    width: 900px !important; 
+}
+#leaderboard-modal .modal-content {
+    width: 800px !important;
+}
+#mp-menu-modal .modal-content {
+    width: 700px !important;
+}
+
+/* 4. SHOP GRID ENHANCEMENT (More items per row) */
+#shop-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+}
+
+/* =========================================
+   🏆 FINAL RESULT DASHBOARD STYLES
+   ========================================= */
+
+/* Stat Cards (Glassmorphism) */
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s;
+}
+.stat-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #555;
+    transform: translateY(-2px);
+}
+.stat-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+.stat-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 32px;
+    font-weight: 900;
+}
+
+/* Podium Pillars */
+.podium-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    width: 80px;
+    transition: height 1s ease-out;
+}
+.podium-avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: #000;
+    border: 2px solid #555;
+    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+.podium-bar {
+    width: 100%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(0,0,0,0.8));
+    border: 1px solid #444;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 10px;
+    font-family: 'Orbitron';
+    font-weight: bold;
+    color: rgba(255,255,255,0.3);
+    font-size: 40px;
+    position: relative;
+}
+
+/* Rank Specifics */
+.rank-1 .podium-avatar { border-color: #ffd700; box-shadow: 0 0 20px #ffd700; }
+.rank-1 .podium-bar { height: 180px; border-color: #ffd700; background: linear-gradient(to bottom, rgba(255, 215, 0, 0.2), rgba(0,0,0,0.8)); }
+.rank-1 .rank-num { color: #ffd700; }
+
+.rank-2 .podium-avatar { border-color: #c0c0c0; }
+.rank-2 .podium-bar { height: 130px; border-color: #c0c0c0; }
+
+.rank-3 .podium-avatar { border-color: #cd7f32; }
+.rank-3 .podium-bar { height: 90px; border-color: #cd7f32; }
+
+/* Winner Name */
+.winner-name-tag {
+    font-size: 12px; color: #fff; margin-top: 5px; font-family: 'Rajdhani';
+    background: #111; padding: 2px 8px; border-radius: 4px; border: 1px solid #333;
+}
+
+/* =========================================
+   🌑 CYBER CURTAIN STYLES
+   ========================================= */
+#class-curtain {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #000510; /* Deep Space Blue-Black */
+    z-index: 999999;
+    display: flex; justify-content: center; align-items: center;
+    flex-direction: column;
+}
+
+/* Moving Grid Effect */
+.cyber-grid {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 229, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.3;
+    animation: gridMove 20s linear infinite;
+}
+@keyframes gridMove { from { transform: translateY(0); } to { transform: translateY(50px); } }
+
+.curtain-content { z-index: 2; text-align: center; }
+
+/* Spinning Loader */
+.loader-ring {
+    width: 80px; height: 80px; margin: 0 auto 20px;
+    border: 5px solid rgba(0, 229, 255, 0.2);
+    border-top: 5px solid #00e5ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Typography */
+.glitch-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 32px; color: #fff; letter-spacing: 5px;
+    text-shadow: 0 0 10px #00e5ff;
+    margin: 0;
+}
+.neon-number {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 150px; font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+    margin: 10px 0;
+    line-height: 1;
+}
+.blink-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px; color: #00ff41; letter-spacing: 3px;
+    animation: blink 1s infinite;
+}
+@keyframes blink { 50% { opacity: 0.5; } }
+
+/* =========================================
+   🛸 CLASS SELECTION TERMINAL DESIGN
+   ========================================= */
+
+/* 1. The Dark Overlay Background */
+#class-selection-modal {
+    background: rgba(0, 5, 16, 0.97) !important; /* Darker, deeper space background */
+    backdrop-filter: blur(8px); /* Adds a futuristic blur effect to what's behind */
+}
+
+/* 2. The Main Terminal Box */
+#class-selection-modal > div {
+    background: linear-gradient(160deg, #050a15 0%, #001525 100%); /* Subtle dark gradient */
+    border: 2px solid #00e5ff; /* Bright Neon Cyan border */
+    box-shadow: 
+        0 0 40px rgba(0, 229, 255, 0.3), /* Outer Cyan Glow */
+        inset 0 0 20px rgba(0, 229, 255, 0.1); /* Inner Cyan Glow */
+    border-radius: 12px;
+    padding: 50px 40px !important; /* More breathing room */
+    position: relative;
+    overflow: hidden; /* Keeps decorative elements inside */
+    max-width: 500px;
+    width: 90%;
+}
+
+/* 🌐 Decorative "Tech Corners" (Gold Accents) */
+#class-selection-modal > div::before,
+#class-selection-modal > div::after {
+    content: '';
+    position: absolute;
+    width: 25px; height: 25px;
+    border: 3px solid #ffd700; /* Gold corners */
+    z-index: 2;
+    opacity: 0.8;
+}
+#class-selection-modal > div::before {
+    top: -3px; left: -3px;
+    border-bottom: none; border-right: none;
+}
+#class-selection-modal > div::after {
+    bottom: -3px; right: -3px;
+    border-top: none; border-left: none;
+}
+
+/* 3. Typography Upgrades */
+#class-selection-modal h2 {
+    font-family: 'Orbitron', sans-serif;
+    color: #ffd700; /* Gold Title */
+    font-size: 28px;
+    letter-spacing: 4px;
+    margin-bottom: 15px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    position: relative;
+}
+/* Adding a small underline scanner effect to the title */
+#class-selection-modal h2::after {
+    content: ''; display: block; width: 60px; height: 3px;
+    background: #ffd700; margin: 10px auto 0;
+    box-shadow: 0 0 10px #ffd700;
+}
+
+#class-selection-modal p {
+    font-family: 'Rajdhani', sans-serif;
+    color: #00e5ff; /* Cyan Subtitle */
+    font-size: 16px;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    margin-bottom: 40px;
+}
+
+/* 4. The Input Field (Data Entry) */
+#class-code-direct {
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid #333;
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    letter-spacing: 6px;
+    text-align: center;
+    padding: 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+#class-code-direct:focus {
+    border-color: #00e5ff; /* Glows cyan when typing */
+    box-shadow: 
+        0 0 25px rgba(0, 229, 255, 0.6),
+        inset 0 0 10px rgba(0, 229, 255, 0.2);
+    outline: none;
+    transform: scale(1.02);
+}
+
+#class-selection-modal label {
+    font-family: 'Rajdhani', sans-serif;
+    color: #888;
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* 5. Buttons Overhaul */
+#class-selection-modal .modal-actions {
+    margin-top: 40px;
+    gap: 20px;
+}
+
+/* Connect Button (Green/Cyan Gradient) */
+#class-selection-modal button.btn.primary {
+    background: linear-gradient(90deg, #00e5ff 0%, #00ffaa 100%);
+    color: #000;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    letter-spacing: 3px;
+    border: none;
+    padding: 18px 35px;
+    font-size: 18px;
+    border-radius: 6px;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.5);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+#class-selection-modal button.btn.primary:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 0 50px rgba(0, 229, 255, 0.9);
+}
+
+/* Cancel Button (Red Text) */
+#class-selection-modal button.btn.text-only {
+    color: #ff4444;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    letter-spacing: 3px;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    background: transparent;
+}
+#class-selection-modal button.btn.text-only:hover {
+    opacity: 1;
+    text-shadow: 0 0 15px #ff0000;
+}
+
+/* =========================================
+   🌌 LIVE DEEP SPACE BACKGROUND (CSS ONLY)
+   ========================================= */
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #020205; /* Deepest Void Black */
+    overflow: hidden; /* Iwas scrollbars */
+    font-family: 'Rajdhani', sans-serif;
+    color: white;
+}
+
+/* 1. MOVING STARS (Parallax Effect) */
+#star-field {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -3;
+    background: transparent;
+}
+
+#star-field::after {
+    content: " ";
+    position: absolute;
+    top: 0; left: 0; width: 2px; height: 2px;
+    background: transparent;
+    /* Gumagawa ng maraming stars gamit ang box-shadow trick */
+    box-shadow: 
+        10vw 10vh #fff, 20vw 80vh #fff, 30vw 20vh #fff, 40vw 50vh #fff, 
+        50vw 90vh #fff, 60vw 30vh #fff, 70vw 70vh #fff, 80vw 10vh #fff, 
+        90vw 60vh #fff, 95vw 40vh #fff, 5vw 50vh #fff, 15vw 90vh #fff,
+        25vw 10vh #fff, 35vw 70vh #fff, 45vw 30vh #fff, 55vw 80vh #fff,
+        65vw 20vh #fff, 75vw 60vh #fff, 85vw 40vh #fff, 50vw 50vh #fff;
+    animation: starFly 50s linear infinite;
+    opacity: 0.8;
+}
+
+#star-field::before {
+    content: " ";
+    position: absolute;
+    top: 0; left: 0; width: 3px; height: 3px;
+    background: transparent;
+    /* Mas malalaking stars, mas mabagal (Parallax) */
+    box-shadow: 
+        15vw 15vh #88ccff, 35vw 85vh #88ccff, 55vw 35vh #88ccff, 
+        75vw 65vh #88ccff, 95vw 25vh #88ccff, 10vw 60vh #88ccff;
+    animation: starFly 80s linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes starFly {
+    from { transform: translateY(0); }
+    to { transform: translateY(100vh); }
+}
+
+/* 2. NEBULA FOG (Atmosphere) */
+#nebula-layer {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -2;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(0, 229, 255, 0.08), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(255, 0, 85, 0.05), transparent 40%);
+    animation: pulseNebula 10s ease-in-out infinite alternate;
+}
+
+@keyframes pulseNebula {
+    0% { opacity: 0.5; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.05); }
+}
+
+/* 3. DIGITAL GRID FLOOR (Retro Arcade Feel) */
+#grid-floor {
+    position: fixed;
+    bottom: 0; left: 0; width: 100%; height: 40vh; /* Nasa lower part lang */
+    z-index: -1;
+    background-image: 
+        linear-gradient(0deg, transparent 24%, rgba(0, 229, 255, 0.3) 25%, rgba(0, 229, 255, 0.3) 26%, transparent 27%, transparent 74%, rgba(0, 229, 255, 0.3) 75%, rgba(0, 229, 255, 0.3) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, rgba(0, 229, 255, 0.1) 25%, rgba(0, 229, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 229, 255, 0.1) 75%, rgba(0, 229, 255, 0.1) 76%, transparent 77%, transparent);
+    background-size: 50px 50px;
+    transform: perspective(300px) rotateX(60deg) scale(2);
+    transform-origin: bottom;
+    animation: gridMove 5s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0)); /* Fade out sa horizon */
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0));
+}
+
+@keyframes gridMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 50px; }
+}
+
+/* =========================================
+   🌌 BACKGROUND CANVAS (DEEP SPACE)
+   ========================================= */
+body {
+    background-color: #020205; /* Fallback Black */
+    overflow: hidden; 
+}
+
+#bgCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -10; /* Siguradong nasa likod ng lahat */
+    background: radial-gradient(circle at center, #0b1021 0%, #000000 100%); /* Subtle Gradient */
 }
