@@ -256,27 +256,33 @@ window.switchTab = function(tab) {
 };
 
 window.registerUser = async function() {
-    const name = document.getElementById('reg-username').value.trim();
-    const email = document.getElementById('reg-email').value.trim();
-    const pass = document.getElementById('reg-pass').value;
-    const msg = document.getElementById('auth-msg');
+    const name = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const pass = document.getElementById('reg-pass').value;
+    const msg = document.getElementById('auth-msg');
 
-    if (!name || !email || !pass) { msg.innerText = "FILL ALL FIELDS"; return; }
-    
-    msg.innerText = "CREATING IDENTITY...";
-    try {
-        const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        await setDoc(doc(db, "users", cred.user.uid), {
-            username: name.toUpperCase(),
-            email: email,
-            totalXP: 0,
-            rank: "CADET",
-            createdAt: new Date()
-        });
-        msg.innerText = "SUCCESS! LOGGING IN...";
-    } catch (e) {
-        msg.innerText = "ERROR: " + e.message;
-    }
+    if (!name || !email || !pass) { msg.innerText = "FILL ALL FIELDS"; return; }
+    
+    msg.innerText = "CREATING IDENTITY...";
+    try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        
+        // 🟢 AUTO-INIT: Gumawa ng kumpletong data structure agad
+        await setDoc(doc(db, "users", cred.user.uid), {
+            username: name.toUpperCase(),
+            email: email,
+            totalXP: 0,
+            rank: "CADET",
+            coins: 200,             // Default Money
+            matchHistory: [],       // Empty Array for History
+            inventory: ['turret_def', 'enemy_def', 'boss_def', 'fx_blue'], // Default Items
+            equipped: { turret: 'turret_def', fx: 'fx_blue', enemy: 'enemy_def', boss: 'boss_def' },
+            createdAt: new Date()
+        });
+        msg.innerText = "SUCCESS! LOGGING IN...";
+    } catch (e) {
+        msg.innerText = "ERROR: " + e.message;
+    }
 };
 
 window.loginUser = async function() {
@@ -326,39 +332,63 @@ function getRankInfo(xp) {
 }
 
 if (auth) {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            const docRef = doc(db, "users", user.uid);
-            const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                currentUser = docSnap.data();
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const docRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                currentUser = docSnap.data();
                 currentUser.uid = user.uid;
                 myName = currentUser.username; 
-    
+                
+                // 🟢 SELF-REPAIR PROTOCOL: Check for missing data fields
+                let needsUpdate = false;
+                let updates = {};
+
+                if (!currentUser.matchHistory) {
+                    currentUser.matchHistory = [];
+                    updates.matchHistory = [];
+                    needsUpdate = true;
+                    console.log("🛠️ Fixing missing matchHistory...");
+                }
+                if (currentUser.coins === undefined) {
+                    currentUser.coins = 200;
+                    updates.coins = 200;
+                    needsUpdate = true;
+                }
+                if (!currentUser.inventory) {
+                    updates.inventory = ['turret_def', 'enemy_def', 'boss_def', 'fx_blue'];
+                    needsUpdate = true;
+                }
+
+                // Apply repairs to Database automatically
+                if (needsUpdate) {
+                    await updateDoc(docRef, updates);
+                    console.log("✅ User Data Auto-Repaired.");
+                }
+
+                // UI Updates
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('guest-option').classList.add('hidden');
                 document.getElementById('profile-section').classList.remove('hidden');
-    
+                
                 const rankData = getRankInfo(currentUser.totalXP);
                 document.getElementById('agent-name-display').innerText = myName;
                 document.getElementById('rank-title').innerText = rankData.title;
                 document.getElementById('rank-icon').innerText = rankData.icon;
                 document.getElementById('xp-text').innerText = `${currentUser.totalXP} / ${rankData.next} XP`;
-    
+                
                 let xpPercent = Math.min(100, (currentUser.totalXP / rankData.next) * 100);
                 document.getElementById('profile-xp-fill').style.width = xpPercent + "%";
 
-                // ✅ FIX: SYNC SHOP DATA (COINS & ITEMS) IMMEDIATELY
-                if (window.syncShopData) {
-                    console.log("📥 SYNCING PLAYER DATA...", currentUser);
-                    window.syncShopData(currentUser);
-                }
-    
+                // Sync Shop Data
+                if (window.syncShopData) window.syncShopData(currentUser);
+                
                 if(window.Sound) window.Sound.speak("Welcome back, " + myName);
-            }
-        }
-    });
+            }
+        }
+    });
 }
 
 // --- OPTIMIZED HUD & SOUND ---
@@ -470,6 +500,43 @@ window.Sound = {
     isMuted: false,
     activeNodes: [], // Tracks active oscillators/intervals
     currentMode: null,
+   
+// PRESETS
+    laser: function() { 
+        if(!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(1200, t);
+        o.frequency.exponentialRampToValueAtTime(100, t + 0.2); 
+        g.gain.setValueAtTime(0.3, t); 
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        o.connect(g); g.connect(this.masterGain);
+        o.start(); o.stop(t + 0.2);
+    }, 
+    boom: function() { this.playTone(50, 'square', 0.5, 0.6); }, 
+    error: function() { this.playTone(150, 'sawtooth', 0.2, 0.2); }, 
+    
+    // 🟢 ITO ANG NAWAWALA NA NAGPAPACRASH SA BOSS AT EMP!
+    nuke: function() { this.playTone(30, 'square', 2.0, 0.8); }, 
+    
+    powerup: function() {
+        if(!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.frequency.setValueAtTime(400, t);
+        o.frequency.linearRampToValueAtTime(2000, t + 0.5); 
+        g.gain.setValueAtTime(0.2, t);
+        g.gain.linearRampToValueAtTime(0, t + 0.5);
+        o.connect(g); g.connect(this.masterGain);
+        o.start(); o.stop(t + 0.5);
+    },
+    click: function() { 
+        if(!this.ctx) this.init(); 
+        this.playTone(1000, 'sine', 0.05, 0.1); 
+    },
 
     // --- 1. INITIALIZATION ---
     init: function() {
@@ -1165,34 +1232,47 @@ window.goHome = function() {
     location.reload(); 
 };
 
-// --- 🧹 CLEANUP UTILITY (NEW) ---
 window.cleanupGame = function() {
-    console.log("Executing System Cleanup...");
-    
-    // 1. Stop Game Loop
-    state.isPlaying = false;
-    state.isPaused = false;
-    
-    // 2. Clear Intervals & Timers
-    if (scoreInterval) { clearInterval(scoreInterval); scoreInterval = null; }
-    if (state.gameTimer) { clearInterval(state.gameTimer); state.gameTimer = null; }
-    if (autoStartTimer) { clearInterval(autoStartTimer); autoStartTimer = null; }
-    if (state.lockTimer) { clearInterval(state.lockTimer); state.lockTimer = null; }
-    
-    // 3. Detach Database Listeners
-    if (roomUnsub) { roomUnsub(); roomUnsub = null; }
-    if (dashboardUnsub) { dashboardUnsub(); dashboardUnsub = null; }
+    console.log("🧹 Executing System Cleanup...");
+    
+    // 1. Stop Game Loop & Logic
+    state.isPlaying = false;
+    state.isPaused = false;
+    state.isGlobalFreeze = false; // Reset freeze state
+    
+    // 2. Kill All Timers
+    if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
+    if (state.gameTimer) clearInterval(state.gameTimer);
+    if (autoStartTimer) clearInterval(autoStartTimer);
+    if (state.lockTimer) clearInterval(state.lockTimer);
+    
+    // 3. Detach Database Listeners (CRITICAL FIX)
+    if (roomUnsub) { 
+        roomUnsub(); 
+        roomUnsub = null; 
+        console.log(" - Room Listener Detached");
+    }
+    if (dashboardUnsub) { 
+        dashboardUnsub(); 
+        dashboardUnsub = null; 
+        console.log(" - Dashboard Listener Detached");
+    }
 
-    // 4. Reset Socket Listeners (Para hindi madoble ang putok)
-    if (socket) {
-        socket.off('sync_spawn');
-        socket.off('sync_shot');
-        socket.off('sync_level_update');
-        socket.off('client_xp_gain');
-        socket.off('sync_xp_update');
-        socket.off('sync_skill');
-        socket.off('party_sync_pos'); // New for Party Mode Fix
-    }
+    // 4. Reset Socket Listeners
+    if (socket) {
+        socket.off('sync_spawn');
+        socket.off('sync_shot');
+        socket.off('sync_level_update');
+        socket.off('client_xp_gain');
+        socket.off('sync_xp_update');
+        socket.off('sync_skill');
+        socket.off('party_sync_pos');
+    }
+    
+    // 5. Clear Local State
+    currentRoomId = null;
+    isHost = false;
+    myDocId = null;
 };
 
 window.abortStudent = function() {
@@ -1313,173 +1393,246 @@ window.joinRoom = async function() {
 };
 
 function enterClassroomLobby(code, roomName) {
-    // 1. UI Setup
-    document.getElementById("mp-menu-modal").classList.add("hidden");
-    document.getElementById("lobby-modal").classList.remove("hidden");
-    document.getElementById("room-code-display").innerText = roomName || code;
-    document.getElementById("lobby-title-text").innerText = "CLASSROOM STANDBY";
-    document.getElementById("client-wait-msg").classList.remove("hidden");
-    document.getElementById("client-wait-msg").innerText = "EYES ON THE TEACHER...";
-    document.getElementById("host-start-btn").classList.add("hidden"); 
+    // 1. UI Setup: Ihanda ang Lobby Screen
+    document.getElementById("mp-menu-modal").classList.add("hidden");
+    document.getElementById("lobby-modal").classList.remove("hidden");
+    document.getElementById("room-code-display").innerText = roomName || code;
+    
+    setTimeout(() => {
+        window.toggleCurtain(false);
+    }, 1500);
 
-    if (roomUnsub) roomUnsub();
-    
-    roomUnsub = onSnapshot(doc(db, "rooms", code), (snap) => {
-        if(!snap.exists()) {
-            alert("Classroom disbanded.");
-            window.goHome();
-            return;
-        }
-        
-        const data = snap.data();
+    const lobbyTitle = document.getElementById("lobby-title-text");
+    if(lobbyTitle) lobbyTitle.innerText = "CLASSROOM STANDBY";
+    
+    const waitMsg = document.getElementById("client-wait-msg");
+    if(waitMsg) {
+        waitMsg.classList.remove("hidden");
+        waitMsg.innerText = "EYES ON THE TEACHER...";
+    }
+    
+    const hostBtn = document.getElementById("host-start-btn");
+    if(hostBtn) hostBtn.classList.add("hidden");
 
-        // Config Sync
-        if(data.config) {
-            if(data.config.ops) state.selectedOps = data.config.ops;
-            state.classroomTopic = data.config.topic || 'custom';
-            state.customTimeLimit = data.config.timeLimit; 
-        }
+    // 2. Clear Old Listeners
+    if (roomUnsub) roomUnsub();
+    
+    // 3. START LISTENING TO ROOM UPDATES
+    roomUnsub = onSnapshot(doc(db, "rooms", code), (snap) => {
+        if(!snap.exists()) {
+            alert("Classroom disbanded by the Teacher.");
+            window.goHome();
+            return;
+        }
+        
+        const data = snap.data();
 
-        // --- SIGNAL: START / RESUME ---
-        // Hanapin ang part na ito sa loob ng enterClassroomLobby -> onSnapshot:
+        // A. SYNC CONFIG
+        if(data.config) {
+            if(data.config.ops) state.selectedOps = data.config.ops;
+            state.classroomTopic = data.config.topic || 'custom';
+            state.customTimeLimit = data.config.timeLimit; 
+            state.difficulty = data.config.difficulty || 'medium';
+        }
 
-        // --- SIGNAL: START / RESUME ---
-        if (data.status === 'playing') {
-            
-            // A. RESUME FROM FREEZE
-            if(state.isPaused && state.isGlobalFreeze) {
-                 console.log("Resuming from freeze...");
-                 state.isGlobalFreeze = false;
-                 state.isPaused = false;
-                 document.getElementById("pause-modal").classList.add("hidden");
-                 const resumeBtn = document.getElementById("btn-resume-game");
-                 if(resumeBtn) resumeBtn.style.display = 'block';
-                 requestAnimationFrame(gameLoop);
-                 if(window.inputField) window.inputField.focus();
-                 return; 
-            }
+        // B. STATE MACHINE
+        switch (data.status) {
+            
+            // --- CASE 1: GAME IS ACTIVE ---
+            case 'playing':
+                // Check 1: Resume from Freeze (Unchanged logic)
+                if (state.isGlobalFreeze) {
+                    console.log("🔓 Unfreezing System...");
+                    state.isGlobalFreeze = false;
+                    state.isPaused = false;
+                    document.getElementById("pause-modal").classList.add("hidden");
+                    if (window.inputField) window.inputField.focus();
+                    requestAnimationFrame(gameLoop);
+                    return; 
+                }
 
-            // B. NEW ROUND START (WITH GUARD CLAUSE)
-            // 🟢 CHANGED: Nagdagdag ng strict checking para di mag-loop
-            const isNewRound = (state.roundsPlayed !== data.currentRound);
-            
-            if (!state.isPlaying && isNewRound) {
-                console.log("Starting Round:", data.currentRound);
-                document.getElementById("report-modal").classList.add("hidden");
-                document.getElementById("lobby-modal").classList.add("hidden");
-                
-                // Cleanup old listeners before starting class mode logic
-                if(window.cleanupGame) window.cleanupGame();
+                // Check 2: New Round Detection
+                if (!state.isPlaying || state.roundsPlayed !== data.currentRound) {
+                    console.log("🚀 Starting Round:", data.currentRound);
+                    
+                    // 1. ACTIVATE THE CURTAIN (Cover everything!)
+                    const curtain = document.getElementById("class-curtain");
+                    const curtainText = document.getElementById("curtain-countdown");
+                    
+                    curtain.classList.remove("hidden");
+                    curtain.style.display = "flex"; // Force flex display
+                    
+                    // 2. Hide Menus (Behind the curtain)
+                    document.getElementById("start-modal").classList.add("hidden"); 
+                    document.getElementById("lobby-modal").classList.add("hidden");
+                    document.getElementById("report-modal").classList.add("hidden");
+                    document.getElementById("mp-menu-modal").classList.add("hidden");
+                    document.getElementById("profile-section").classList.add("hidden"); // Hide profile explicitly
+                    
+                    // 3. Reset State Logic
+                    if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
+                    if (state.gameTimer) clearInterval(state.gameTimer);
+                    
+                    state.gameMode = 'classroom'; 
+                    state.roundsPlayed = data.currentRound || 1; 
 
-                state.gameMode = 'classroom'; 
-                state.roundsPlayed = data.currentRound || 1; 
+                    if (state.roundsPlayed === 1) {
+                        state.score = 0;
+                        state.mistakes = []; 
+                        state.gameHistory = [];
+                    }
 
-                if (state.roundsPlayed === 1) {
-                    state.score = 0;
-                    state.mistakes = []; 
-                }
+                    state.health = 100;      
+                    state.meteors = [];
+                    state.lasers = [];
+                    state.particles = [];
 
-                state.health = 100;     
-                state.meteors = [];
-                state.lasers = [];
-                state.particles = [];
-                
-                startGameLogic(); 
-                reportProgress(false); 
-            }
-            // ELSE: Kung playing na at same round, DO NOTHING. (Iwas Reset)
-        }
+                    // 4. THE COUNTDOWN SEQUENCE
+                    let count = 3;
+                    curtainText.innerText = count;
+                    if(window.Sound) window.Sound.click();
 
-        // --- SIGNAL: FREEZE ---
-        if (data.status === 'frozen' && state.isPlaying) {
-            state.isPaused = true;
-            state.isGlobalFreeze = true;
-            document.getElementById("pause-modal").classList.remove("hidden");
-            
-            const pauseTitle = document.querySelector("#pause-modal h2");
-            if(pauseTitle) {
-                pauseTitle.innerText = "⚠️ FROZEN BY COMMANDER";
-                pauseTitle.style.color = "#ff0055";
-            }
-            
-            const resumeBtn = document.getElementById("btn-resume-game");
-            if(resumeBtn) resumeBtn.style.display = 'none';
-            if(window.inputField) window.inputField.blur();
-        }
+                    let startTimer = setInterval(() => {
+                        count--;
+                        if (count > 0) {
+                            curtainText.innerText = count;
+                            if(window.Sound) window.Sound.click();
+                        } else if (count === 0) {
+                            curtainText.innerText = "ENGAGE!";
+                            curtainText.style.color = "#ff0055"; // Red for GO
+                            if(window.Sound) window.Sound.powerup();
+                        } else {
+                            // 5. START GAME & LIFT CURTAIN
+                            clearInterval(startTimer);
+                            curtain.classList.add("hidden"); // Bye curtain!
+                            
+                            // Ensure Canvas is Visible
+                            document.getElementById("game-wrapper").classList.remove("hidden");
+                            
+                            startGameLogic(); // Start the engine
+                            reportProgress(false); 
+                        }
+                    }, 1000);
+                }
+                break;
+            // --- CASE 2: TEACHER FROZE THE GAME ---
+            case 'frozen':
+                if (state.isPlaying && !state.isPaused) {
+                    state.isPaused = true;
+                    state.isGlobalFreeze = true;
+                    
+                    const pModal = document.getElementById("pause-modal");
+                    pModal.classList.remove("hidden");
+                    
+                    const pTitle = document.querySelector("#pause-modal h2");
+                    if(pTitle) {
+                        pTitle.innerText = "⚠️ FROZEN BY COMMANDER";
+                        pTitle.style.color = "#ff0055";
+                    }
+                    
+                    const resBtn = document.getElementById("btn-resume-game");
+                    if(resBtn) resBtn.style.display = 'none';
 
-        // --- SIGNAL: INTERMISSION (Round Ended) ---
-        if (data.status === 'round_ended' && state.isPlaying) {
-            state.isPlaying = false;
-            if(window.inputField) window.inputField.blur();
-            
-            if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
-            if (state.gameTimer) clearInterval(state.gameTimer);
+                    if(window.inputField) window.inputField.blur();
+                    if(window.Sound) window.Sound.error();
+                }
+                break;
 
-            // Note: Hindi na natin kailangan i-add sa totalScore variable kasi
-            // ang state.score mismo ay cumulative na.
-            
-            const reportModal = document.getElementById("report-modal");
-            reportModal.classList.remove("hidden");
-            
-            const rTitle = document.querySelector("#report-modal h1");
-            const scoreLabel = document.querySelector("#report-modal small");
-            
-            if(rTitle) {
-                rTitle.innerText = "ROUND COMPLETE";
-                rTitle.className = "neon-blue"; 
-                rTitle.style.color = "#00e5ff";
-            }
-            if(scoreLabel) scoreLabel.innerText = "TOTAL SCORE (SO FAR)";
-            
-            // Show Cumulative Score
-            document.getElementById("rep-score").innerText = state.score;
-            
-            const retryBtn = reportModal.querySelector('button[onclick*="startSolo"]');
-            const homeBtn = reportModal.querySelector('button[onclick*="goHome"]');
-            
-            if(homeBtn) homeBtn.style.display = 'none'; 
-            if(retryBtn) { 
-                retryBtn.innerText = "⏳ WAITING FOR NEXT ROUND..."; 
-                retryBtn.style.opacity = "0.8"; 
-                retryBtn.disabled = true;
-                retryBtn.style.display = "block";
-                retryBtn.onclick = null;
-            }
+            // --- CASE 3: ROUND ENDED (INTERMISSION) ---
+            case 'round_ended':
+                if (state.isPlaying) {
+                    state.isPlaying = false;
+                    if(window.inputField) window.inputField.blur();
+                    
+                    if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
+                    if (state.gameTimer) clearInterval(state.gameTimer);
 
-            reportProgress(false);
-        }
+                    // Show Landscape Report Modal
+                    const rModal = document.getElementById("report-modal");
+                    rModal.classList.remove("hidden");
+                    
+                    const rTitle = document.querySelector("#report-modal h1");
+                    const rScore = document.getElementById("rep-score");
+                    
+                    if(rTitle) { rTitle.innerText = "ROUND COMPLETE"; rTitle.className = "neon-blue"; }
+                    if(rScore) rScore.innerText = state.score;
 
-        // --- SIGNAL: FINISHED (Game Over) ---
-        if (data.status === 'finished') {
-            state.isPlaying = false;
-            if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
-            if (state.gameTimer) clearInterval(state.gameTimer);
-            
-            const reportModal = document.getElementById("report-modal");
-            if(reportModal) {
-                reportModal.classList.remove("hidden");
-                const title = reportModal.querySelector("h1");
-                const scoreLabel = document.querySelector("#report-modal small");
-                
-                if(title) {
-                    title.innerText = "MISSION ACCOMPLISHED";
-                    title.className = "neon-gold"; 
-                    title.style.color = "#ffd700";
-                }
-                if(scoreLabel) scoreLabel.innerText = "FINAL MISSION SCORE";
-                
-                // Final Score is just state.score (Cumulative)
-                document.getElementById("rep-score").innerText = state.score;
-                
-                const retryBtns = document.querySelector(".retry-actions");
-                if(retryBtns) {
-                    retryBtns.innerHTML = `<button class="btn primary" onclick="window.goHome()">LOGOUT AGENT</button>`;
-                }
-            }
-            reportProgress(true);
-        }
-    });
+                    if(window.renderTacticalLog) window.renderTacticalLog();
+
+                    const homeBtn = rModal.querySelector('button[onclick*="goHome"]');
+                    const retryBtn = rModal.querySelector('button[onclick*="startSolo"]');
+                    const aiBtn = rModal.querySelector('button[onclick*="startAITraining"]');
+
+                    if(homeBtn) homeBtn.style.display = 'none'; 
+                    if(aiBtn) aiBtn.style.display = 'none'; 
+                    
+                    if(retryBtn) { 
+                        retryBtn.innerText = "⏳ WAITING FOR TEACHER..."; 
+                        retryBtn.onclick = null; 
+                        retryBtn.style.opacity = "0.5"; 
+                        retryBtn.style.display = "block";
+                        retryBtn.disabled = true;
+                    }
+
+                    reportProgress(false);
+                    if(window.Sound) window.Sound.speak("Round complete. Stand by.");
+                }
+                break;
+
+            // --- CASE 4: CLASS DISMISSED (FINAL SCORE) ---
+            case 'finished':
+                state.isPlaying = false;
+                if (typeof scoreInterval !== 'undefined') clearInterval(scoreInterval);
+                if (state.gameTimer) clearInterval(state.gameTimer);
+                
+                const fModal = document.getElementById("report-modal");
+                fModal.classList.remove("hidden");
+                
+                const fTitle = fModal.querySelector("h1");
+                if(fTitle) {
+                    fTitle.innerText = "MISSION ACCOMPLISHED";
+                    fTitle.className = "neon-gold";
+                }
+                
+                document.getElementById("rep-score").innerText = state.score;
+
+                const fExitBtn = document.querySelector(".retry-actions");
+                if(fExitBtn) {
+                    fExitBtn.innerHTML = `<button class="btn primary" onclick="window.goHome()">LOGOUT AGENT</button>`;
+                }
+
+                reportProgress(true); 
+                if(window.Sound) window.Sound.speak("Class dismissed. Good work, Agent.");
+                break;
+        }
+    });
 }
+
+// 🟢 HELPER: TOGGLE CYBER CURTAIN
+window.toggleCurtain = function(show, title = "LOADING...", sub = "PLEASE WAIT", showCount = false) {
+    const curtain = document.getElementById("class-curtain");
+    const titleEl = document.getElementById("curtain-title");
+    const subEl = document.getElementById("curtain-sub");
+    const countEl = document.getElementById("curtain-countdown");
+    const loader = document.querySelector(".loader-ring");
+
+    if (show) {
+        curtain.classList.remove("hidden");
+        curtain.style.display = "flex";
+        titleEl.innerText = title;
+        subEl.innerText = sub;
+        
+        if (showCount) {
+            countEl.classList.remove("hidden");
+            loader.classList.add("hidden"); // Hide spinner during countdown
+        } else {
+            countEl.classList.add("hidden");
+            loader.classList.remove("hidden"); // Show spinner during loading
+        }
+    } else {
+        curtain.classList.add("hidden");
+    }
+};
 
 function enterLobbyUI(code) {
     document.getElementById("mp-menu-modal").classList.add("hidden"); document.getElementById("lobby-modal").classList.remove("hidden");
@@ -1498,93 +1651,60 @@ function enterLobbyUI(code) {
 window.hostStartGame = async function() { if(totalPlayers < 2) { alert("Need 2 players!"); return; } await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'playing' }); };
 
 function startGameLogic() {
-    // 1. CLEANUP FIRST (Iwas Zombie)
-    if(state.gameMode === 'solo') {
-        window.cleanupGame();
-    }
+    // 1. CLEANUP FIRST
+    if(state.gameMode === 'solo') {
+        window.cleanupGame();
+    }
 
-    // 2. Reset Visuals
-    state.combo = 0; state.maxCombo = 0;
-    const comboEl = document.getElementById("combo-container");
-    if(comboEl) comboEl.classList.add("hidden");
+    // 2. Reset Visuals
+    state.combo = 0; state.maxCombo = 0;
+    const comboEl = document.getElementById("combo-container");
+    if(comboEl) comboEl.classList.add("hidden");
 
-    if (!window.canvas) window.canvas = document.getElementById("gameCanvas");
-    if (!window.ctx && window.canvas) window.ctx = window.canvas.getContext("2d");
+    if (!window.canvas) window.canvas = document.getElementById("gameCanvas");
+    if (!window.ctx && window.canvas) window.ctx = window.canvas.getContext("2d");
 
-    // 3. CLASSROOM MODE: COUNTDOWN START
-    if (state.gameMode === 'classroom') {
-        const countEl = document.getElementById('start-countdown');
-        if(countEl) {
-            countEl.innerText = "3";
-            countEl.classList.remove('hidden');
-            let count = 3;
-            if(window.Sound) window.Sound.click();
+    // 3. START GAMEPLAY IMMEDIATELY (Countdown is handled by the Curtain now)
+    beginGameplay();
 
-            let startInterval = setInterval(() => {
-                count--;
-                if(count > 0) {
-                    countEl.innerText = count;
-                    if(window.Sound) window.Sound.click();
-                } else if (count === 0) {
-                    countEl.innerText = "GO!";
-                    if(window.Sound) window.Sound.powerup();
-                } else {
-                    clearInterval(startInterval);
-                    countEl.classList.add('hidden');
-                    beginGameplay(); 
-                }
-            }, 1000);
-            return; 
-        }
-    }
+    // --- MULTIPLAYER LOGIC INJECTIONS ---
+    
+    // A. VS MODE: NETWORK OPTIMIZATION
+    if(state.gameMode === 'vs' && socket && currentRoomId) {
+        if(state.vsInterval) clearInterval(state.vsInterval);
+        state.vsInterval = setInterval(() => {
+            if(state.isPlaying && !state.isPaused) {
+                let simpleMeteors = state.meteors.map(m => ({ 
+                    id: m.id, x: m.x, y: m.y, q: m.question, hp: m.hp, 
+                    radius: m.radius, isGolden: m.isGolden, 
+                    isSupply: m.isSupply, isBoss: m.isBoss, isSummoned: m.isSummoned 
+                }));
+                let simpleLasers = state.lasers.map(l => ({ 
+                    x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, color: l.color 
+                }));
+                socket.emit('send_vs_state', { 
+                    room: currentRoomId, 
+                    state: { 
+                        meteors: simpleMeteors, 
+                        lasers: simpleLasers, 
+                        health: state.health, 
+                        score: state.score 
+                    } 
+                });
+            }
+        }, 100); 
+    }
 
-    // 4. START GAMEPLAY
-    beginGameplay();
-
-    // --- MULTIPLAYER LOGIC INJECTIONS ---
-    
-    // A. VS MODE: NETWORK OPTIMIZATION (100ms Interval)
-    if(state.gameMode === 'vs' && socket && currentRoomId) {
-        // Clear previous intervals if any
-        if(state.vsInterval) clearInterval(state.vsInterval);
-        
-        state.vsInterval = setInterval(() => {
-            if(state.isPlaying && !state.isPaused) {
-                let simpleMeteors = state.meteors.map(m => ({ 
-                    id: m.id, x: m.x, y: m.y, q: m.question, hp: m.hp, 
-                    radius: m.radius, isGolden: m.isGolden, 
-                    isSupply: m.isSupply, isBoss: m.isBoss, isSummoned: m.isSummoned 
-                }));
-
-                let simpleLasers = state.lasers.map(l => ({ 
-                    x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, color: l.color 
-                }));
-
-                socket.emit('send_vs_state', { 
-                    room: currentRoomId, 
-                    state: { 
-                        meteors: simpleMeteors, 
-                        lasers: simpleLasers, 
-                        health: state.health, 
-                        score: state.score 
-                    } 
-                });
-            }
-        }, 100); // 🟢 CHANGED: 50ms -> 100ms (Less Lag)
-    }
-
-    // B. PARTY MODE: HOST SYNC PULSE (Authoritative Movement)
-    if(state.gameMode === 'party' && isHost && socket) {
-        if(state.partySyncInterval) clearInterval(state.partySyncInterval);
-
-        state.partySyncInterval = setInterval(() => {
-            if(state.isPlaying && !state.isPaused && state.meteors.length > 0) {
-                // Send only positions (lightweight)
-                let positions = state.meteors.map(m => ({ id: m.id, y: m.y, x: m.x }));
-                socket.emit('host_sync_pos', { room: currentRoomId, pos: positions });
-            }
-        }, 2000); // Sync every 2 seconds
-    }
+    // B. PARTY MODE: HOST SYNC PULSE
+    if(state.gameMode === 'party' && isHost && socket) {
+        if(state.partySyncInterval) clearInterval(state.partySyncInterval);
+        state.partySyncInterval = setInterval(() => {
+            if(state.isPlaying && !state.isPaused && state.meteors.length > 0) {
+                let positions = state.meteors.map(m => ({ id: m.id, y: m.y, x: m.x }));
+                socket.emit('host_sync_pos', { room: currentRoomId, pos: positions });
+            }
+        }, 2000); 
+    }
 }
 
 function beginGameplay() {
@@ -1899,41 +2019,46 @@ function destroyMeteor(m, idx) {
 }
 
 function handleMiss(val, meteorObj = null) {
-    if (window.triggerGlitch) window.triggerGlitch(); 
-    if (window.handleCombo) window.handleCombo(false, null, null);
-    
-    // Get Question Data
-    let qLog = meteorObj ? meteorObj.question : "UNKNOWN";
-    let aLog = meteorObj ? meteorObj.answer : "?";
-    let statusLog = (val === "MISSED") ? 'missed' : 'wrong';
+    if (window.triggerGlitch) window.triggerGlitch(); 
+    if (window.handleCombo) window.handleCombo(false, null, null);
+    
+    // Get Question Data
+    let qLog = meteorObj ? meteorObj.question : "UNKNOWN";
+    let aLog = meteorObj ? meteorObj.answer : "?";
+    let statusLog = (val === "MISSED") ? 'missed' : 'wrong';
 
-    registerAction(qLog, aLog, val, statusLog);
+    // 1. Record to History (General Log)
+    registerAction(qLog, aLog, val, statusLog);
 
-    // 🚨 NEMESIS PROTOCOL: CAPTURE THE MISTAKE 🚨
-    // Kung hindi "UNKNOWN" ang tanong, at wala pa sa listahan, idagdag ito.
-    if (qLog !== "UNKNOWN" && state.nemesisList) {
-        // Check for duplicates para hindi paulit-ulit ang save
-        const alreadyExists = state.nemesisList.some(item => item.q === qLog);
-        if (!alreadyExists) {
-            console.log("⚠️ WEAKNESS DETECTED:", qLog);
-            state.nemesisList.push({ q: qLog, a: aLog });
-            
-            // Visual feedback (Optional)
-            if(window.Sound) window.Sound.speak("Weakness noted.");
-        }
-    }
+    // 🟢 2. FIX: ADD TO MISTAKES ARRAY (Para bumaba ang Accuracy)
+    state.mistakes.push({
+        q: qLog,
+        a: aLog,
+        wrong: val,
+        type: statusLog
+    });
 
-    if (state.gameMode === 'classroom') { 
-        triggerInputLock(); 
-        state.score = Math.max(0, state.score - 10); 
-        updateHUD(); 
-        return; 
-    }
+    // 3. Nemesis Protocol
+    if (qLog !== "UNKNOWN" && state.nemesisList) {
+        const alreadyExists = state.nemesisList.some(item => item.q === qLog);
+        if (!alreadyExists) {
+            console.log("⚠️ WEAKNESS DETECTED:", qLog);
+            state.nemesisList.push({ q: qLog, a: aLog });
+            if(window.Sound) window.Sound.speak("Weakness noted.");
+        }
+    }
 
-    if(window.Sound) window.Sound.error(); 
-    state.health -= 10; 
-    updateHUD(); 
-    if (state.health <= 0) gameOver();
+    if (state.gameMode === 'classroom') { 
+        triggerInputLock(); 
+        state.score = Math.max(0, state.score - 10); 
+        updateHUD(); 
+        return; 
+    }
+
+    if(window.Sound) window.Sound.error(); 
+    state.health -= 10; 
+    updateHUD(); 
+    if (state.health <= 0) gameOver();
 }
 
 function handleBossHit(m, idx) {
@@ -2143,151 +2268,114 @@ window.playOutroSequence = function(isWin) {
     }, 3000); // 3 Seconds Delay
 };
 
+// ==========================================
+// 💀 GAME OVER LOGIC (FIXED & CLEANED)
+// ==========================================
 function gameOver() {
-    // 1. Stop Timers & Intervals
-    if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
-    if (state.gameTimer) clearInterval(state.gameTimer);
-    if(window.Sound) window.Sound.stopBGM();
+    // 1. STOP ALL TIMERS & AUDIO
+    if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
+    if (state.gameTimer) clearInterval(state.gameTimer);
+    if (window.Sound) window.Sound.stopBGM();
 
-    // 2. VS MODE SPECIFIC: Handle "I AM DEAD" signal
-    if (state.gameMode === 'vs' && socket && currentRoomId) {
-        state.health = 0; // Ensure zero locally
-        socket.emit('player_died', { room: currentRoomId }); // Event trigger
-        
-        // Force update to opponent immediately
-        socket.emit('send_vs_state', { 
-            room: currentRoomId, 
-            state: { 
-                meteors: [], 
-                lasers: [], 
-                health: 0, 
-                score: state.score 
-            } 
-        });
-    }
+    state.isPlaying = false; 
+    if(window.inputField) window.inputField.blur();
 
-    state.isPlaying = false; 
-    if(window.inputField) window.inputField.blur();
-
-    // 3. VS MODE SCREEN (Red Defeat - Immediate Show, No Cinematic needed for VS speed)
-    if (state.gameMode === 'vs') {
-        const winModal = document.getElementById("win-modal");
-        const winTitle = winModal.querySelector("h1");
-        const winSub = winModal.querySelector(".subtitle");
-        const winContent = winModal.querySelector(".modal-content");
-        
-        winModal.classList.remove("hidden");
-        
-        // Styling for DEFEAT
-        winTitle.innerText = "DEFEAT";
-        winTitle.style.color = "#ff0055"; // Red
-        winTitle.style.textShadow = "0 0 20px #ff0055";
-        
-        winSub.innerText = "SYSTEM CRITICAL - MISSION FAILED";
-        winSub.style.color = "#aaa";
-        
-        winContent.style.borderColor = "#ff0055";
-        winContent.style.boxShadow = "0 0 30px #ff0055";
-        
-        document.getElementById("win-score").innerText = state.score;
-        
-        const playAgainBtn = winModal.querySelector(".secondary");
-        if(playAgainBtn) playAgainBtn.style.display = "none";
-        
-        return; // Stop here for VS Mode
-    }
-
-    // 4. PREPARE REPORT DATA (Solo / Classroom)
-    // We set up the text/buttons behind the scenes before playing the animation
-    const reportModal = document.getElementById("report-modal");
-    document.getElementById("rep-score").innerText = state.score;
-
-    const rTitle = document.querySelector("#report-modal h1");
-    if(rTitle) {
-        rTitle.innerText = "MISSION FAILED";
-        rTitle.className = "neon-red";
-        rTitle.style.color = "#ff0055";
-    }
-
-    // --- BUTTON VISIBILITY LOGIC ---
-    const aiBtn = reportModal.querySelector('button[onclick*="startAITraining"]');
-    const retryBtn = reportModal.querySelector('button[onclick*="startSolo"]');
-    const homeBtn = reportModal.querySelector('button[onclick*="goHome"]');
-
-    if (state.gameMode === 'classroom') {
-        // === CLASSROOM MODE: Student Locked ===
-        if(aiBtn) aiBtn.style.display = 'none';
-        if(homeBtn) homeBtn.style.display = 'none'; 
-
-        // Lock Retry Button (Wait for Teacher)
-        if(retryBtn) { 
-            retryBtn.innerText = "⏳ WAITING FOR TEACHER..."; 
-            retryBtn.onclick = null; 
-            retryBtn.style.opacity = "0.5"; 
-            retryBtn.style.cursor = "not-allowed";
-            retryBtn.style.display = "block"; 
-        }
-
-        // Send Final Status to Teacher
-        reportProgress(true); 
-        if (currentRoomId && myDocId) { 
-            const studentRef = doc(db, "rooms", currentRoomId, "students", myDocId); 
-            updateDoc(studentRef, { status: 'finished' }).catch(e => console.log(e)); 
-        }
-    } 
-    else {
-        // === SOLO MODE: Full Control ===
-        if(aiBtn) aiBtn.style.display = 'block';
-        if(homeBtn) homeBtn.style.display = 'block';
-
-        // Unlock Retry Button
-        if(retryBtn) { 
-            retryBtn.innerText = "🔄 RETRY MISSION"; 
-            retryBtn.onclick = function() { 
-                reportModal.classList.add("hidden"); 
-                window.startSolo(); 
-            }; 
-            retryBtn.style.opacity = "1"; 
-            retryBtn.style.cursor = "pointer";
-            retryBtn.style.display = "block"; 
-        }
-    }    
-
-    // --- UPDATED CODE (SAVES COINS NOW) ---
-    if (typeof currentUser !== 'undefined' && currentUser) {
-        let xpGained = state.score; 
-        let newTotal = (currentUser.totalXP || 0) + xpGained; 
-        currentUser.totalXP = newTotal;
-    
-    // ✅ FIX: Save COINS along with XP
-        if(typeof db !== 'undefined' && typeof updateDoc === 'function') { 
-            updateDoc(doc(db, "users", currentUser.uid), { 
-                totalXP: newTotal,
-                coins: state.coins // <--- IMPORTANT! SAVE THE GOLD!
-            })
-        .then(() => { 
-            let btn = document.getElementById("real-submit-btn"); 
-            if(btn) btn.innerText = `DATA SECURED (+${xpGained} XP)`; 
-        }); 
+    // 2. VS MODE HANDLING (Special Case)
+    if (state.gameMode === 'vs') {
+        if (socket && currentRoomId) {
+            state.health = 0; 
+            socket.emit('player_died', { room: currentRoomId });
+            socket.emit('send_vs_state', { 
+                room: currentRoomId, 
+                state: { meteors: [], lasers: [], health: 0, score: state.score } 
+            });
+        }
+        
+        // Show VS Defeat Modal
+        const winModal = document.getElementById("win-modal");
+        if(winModal) {
+            winModal.classList.remove("hidden");
+            const title = winModal.querySelector("h1");
+            const sub = winModal.querySelector(".subtitle");
+            const content = winModal.querySelector(".modal-content");
+            if(title) { title.innerText = "DEFEAT"; title.style.color = "#ff0055"; }
+            if(sub) sub.innerText = "SYSTEM CRITICAL";
+            if(content) content.style.borderColor = "#ff0055";
+            
+            // Hide Play Again for loser
+            const playAgainBtn = winModal.querySelector(".secondary");
+            if(playAgainBtn) playAgainBtn.style.display = "none";
+        }
+        return; // Stop here for VS Mode
     }
-}
-    
-    // 6. GENERATE ANALYTICS (Behind the scenes)
-    state.scoreSubmitted = false; 
-    if(!currentUser) document.getElementById("real-submit-btn").innerText = "UPLOAD DATA TO HQ";
 
-    // 7. 🎬 TRIGGER CINEMATIC OUTRO (NEW)
-    // Instead of showing the modal immediately, we play the sequence first.
-    // The sequence handles showing the modal after 3 seconds.
-    if (window.playOutroSequence) {
-        let isWin = false; // Usually GameOver = Loss in survival
-        window.playOutroSequence(isWin); 
-    } else {
-        // Fallback if animation missing
-        reportModal.classList.remove("hidden");
-        if(window.generateMissionDebrief) window.generateMissionDebrief();
-        if(window.generateTacticalReport) window.generateTacticalReport();
-    }
+    // 3. SHOW LANDSCAPE DASHBOARD (Solo / Classroom)
+    const reportModal = document.getElementById("report-modal");
+    if(reportModal) reportModal.classList.remove("hidden");
+
+    // Update Basic Stats on UI
+    const scoreEl = document.getElementById("rep-score");
+    if(scoreEl) scoreEl.innerText = state.score;
+
+    // 🟢 GENERATE TACTICAL LOG (Review Mistakes Side)
+    if(window.renderTacticalLog) {
+        window.renderTacticalLog(); 
+    }
+
+    // Generate Rank & Analysis Texts
+    if(window.generateMissionDebrief) window.generateMissionDebrief();
+    if(window.generateTacticalReport) window.generateTacticalReport();
+
+    // 4. 🟢 SAVE DATA (SINGLE SOURCE OF TRUTH)
+    // Tinanggal na natin ang manual 'updateDoc' dito.
+    // Ang function na ito na ang bahala sa XP, Coins, at History.
+    if(window.saveMatchRecord) window.saveMatchRecord();
+
+
+    // 5. BUTTON VISIBILITY LOGIC (Classroom vs Solo)
+    // Inaayos ang mga closing brackets dito na nagko-cause ng issues dati
+    const aiBtn = reportModal ? reportModal.querySelector('button[onclick*="startAITraining"]') : null;
+    const retryBtn = reportModal ? reportModal.querySelector('button[onclick*="startSolo"]') : null;
+    
+    if (state.gameMode === 'classroom') {
+        // --- CLASSROOM MODE: Student Locked ---
+        if(aiBtn) aiBtn.style.display = 'none';
+        
+        if(retryBtn) { 
+            retryBtn.innerText = "⏳ WAITING FOR TEACHER..."; 
+            retryBtn.onclick = null; 
+            retryBtn.style.opacity = "0.5"; 
+            retryBtn.style.cursor = "not-allowed";
+        }
+        
+        // Send final status to teacher
+        if(typeof reportProgress === 'function') reportProgress(true);
+
+    } else {
+        // --- SOLO MODE: Full Control ---
+        if(aiBtn) aiBtn.style.display = 'block'; 
+        
+        if(retryBtn) { 
+            retryBtn.innerText = "🔄 RETRY MISSION"; 
+            retryBtn.onclick = function() { 
+                if(reportModal) reportModal.classList.add("hidden"); 
+                window.startSolo(); 
+            }; 
+            retryBtn.style.opacity = "1"; 
+            retryBtn.style.display = "block";
+            retryBtn.style.cursor = "pointer";
+        }
+    }
+
+    // 6. GENERATE ANALYTICS BUTTON TEXT
+    state.scoreSubmitted = false; 
+    const uploadBtn = document.getElementById("real-submit-btn");
+    if(uploadBtn) uploadBtn.innerText = "UPLOAD DATA TO HQ";
+
+    // 7. 🎬 TRIGGER CINEMATIC OUTRO
+    if (window.playOutroSequence) {
+        window.playOutroSequence(false); // false = Defeat Animation
+    }
 }
 
 // Inside function gameOver()
@@ -2426,30 +2514,32 @@ function drawGame(ctx, objects, offsetX, isOpponent) {
         
         // Inside drawGame function, find the "else if (m.isBoss)" block:
 
-        else if (m.isBoss) {
-             let bossW = 600; let bossH = 450;
-             // ✅ FIX: Use assets object instead of 'bossImage' variable
-             let skinID = m.skin || 'boss_def';
-             let imgObj = (assets.boss && assets.boss[skinID]) ? assets.boss[skinID].img : null;
-             
-             // Fallback to default boss image if specific skin fails
-             if (!imgObj) imgObj = assets.boss['boss_def'].img;
+        // PALITAN ANG BUONG `else if (m.isBoss) { ... }` BLOCK SA LOOB NG drawGame NG GANITO:
 
-             if(imgObj && imgObj.complete) {
-                 ctx.translate(0, Math.sin(time/800)*15); 
-                 ctx.drawImage(imgObj, -bossW/2, -bossH/2, bossW, bossH);
-                 
-                 // Boss Mechanics
-                 if (!isOpponent && !m.isEntering) {
-                    if(window.drawBossShield) window.drawBossShield(ctx, m, time);
-                    if(window.handleBossMechanics) window.handleBossMechanics(ctx, m, time);
-                 }
-             } else { 
-                 // Fallback Red Circle
-                 ctx.fillStyle = "#550000"; ctx.beginPath(); ctx.arc(0,0,200,0,Math.PI*2); ctx.fill(); 
-                 ctx.strokeStyle = "red"; ctx.lineWidth = 10; ctx.stroke();
-             }
-        }
+        else if (m.isBoss) {
+             let bossW = 600; let bossH = 450;
+             let skinID = m.skin || 'boss_def';
+             let imgObj = (assets.boss && assets.boss[skinID]) ? assets.boss[skinID].img : null;
+             if (!imgObj) imgObj = assets.boss['boss_def'].img;
+
+             // 🟢 NEW: DRAW AURA FIRST PARA NASA LIKOD NG BOSS!
+             if(window.handleBossMechanics) window.handleBossMechanics(ctx, m, time);
+
+             if(imgObj && imgObj.complete) {
+                 // Pabibilisin natin ang pagbaba niya mamaya sa gameLoop
+                 ctx.translate(0, Math.sin(time/800)*15); 
+                 ctx.drawImage(imgObj, -bossW/2, -bossH/2, bossW, bossH);
+                 
+                 // Boss Mechanics (Shield) - sa harap
+                 if (!isOpponent && !m.isEntering) {
+                    if(window.drawBossShield) window.drawBossShield(ctx, m, time);
+                 }
+             } else { 
+                 // Fallback Red Circle
+                 ctx.fillStyle = "#550000"; ctx.beginPath(); ctx.arc(0,0,200,0,Math.PI*2); ctx.fill(); 
+                 ctx.strokeStyle = "red"; ctx.lineWidth = 10; ctx.stroke();
+             }
+        }
         
         // =========================================
         // 3. DRAW NORMAL ENEMIES (With Dynamic Skin)
@@ -2527,7 +2617,8 @@ function gameLoop(time) {
     let delta = dt / 16.67; 
     if(delta > 4) delta = 4; // Prevent huge jumps if laggy
 
-    if(window.drawRain) window.drawRain();
+    // Draw Background Layer
+    if(window.drawDeepSpace) window.drawDeepSpace();
 
     // --- 1. CLEANER BACKGROUND RENDERING ---
     if(cityLoaded) { 
@@ -2631,8 +2722,8 @@ function gameLoop(time) {
             // Survival Physics (Falling)
             if (m.isBoss) {
                if(m.isEntering) { 
-                   m.y += (m.speed * 0.8) * delta; 
-                   state.shake = 2; // Slight rumble during entrance
+                   m.y += (m.speed * 3.0) * delta; 
+                   state.shake = 3; // Slight rumble during entrance
                    if(m.y >= 150) { m.isEntering = false; window.Sound.boom(); m.lastSpawn = time; } 
                } else { 
                    m.x = (window.canvas.width / 2) + Math.sin(time / 2000) * 200; 
@@ -2919,9 +3010,32 @@ window.initBossShield = function(boss) {
 window.drawBossShield = function(ctx, boss, time) {
     if (!boss.shield || !boss.shield.active) return;
     
-    ctx.save();
-    // Shield Glow Effect
-    ctx.globalCompositeOperation = 'screen'; 
+   // SA LOOB NG handleBossMechanics, PALITAN ANG DARK MATTER AURA PART:
+
+    // --- 1. DARK MATTER AURA (Rotating Dark Clouds) ---
+    ctx.save(); 
+    ctx.globalCompositeOperation = 'screen'; // 🟢 GINAWANG SCREEN PARA MAG-GLOW
+    let grad = ctx.createRadialGradient(0, 0, 100, 0, 0, 450); // 🟢 PINALAKI ANG SAKOP
+    grad.addColorStop(0, "rgba(255, 0, 50, 0.9)"); // Bright Red Core
+    grad.addColorStop(1, "rgba(50, 0, 0, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(0, 0, 450, 0, Math.PI*2); ctx.fill();
+    
+    // Inner Tech Ring
+    ctx.rotate(time / 400); 
+    ctx.beginPath(); ctx.arc(0, 0, 250, 0, Math.PI * 1.5); 
+    ctx.strokeStyle = `rgba(255, 0, 85, ${0.5 + Math.sin(time/200)*0.4})`; 
+    ctx.lineWidth = 10; ctx.stroke();
+    
+    // Outer Tech Ring
+    ctx.beginPath(); ctx.arc(0, 0, 280, Math.PI, Math.PI * 2); 
+    ctx.strokeStyle = "rgba(255, 215, 0, 0.5)"; ctx.lineWidth = 3; ctx.stroke(); 
+    ctx.restore();
+
+    // 🟢 IMPORTANT: IPATIGIL ANG KIDLAT AT ATTACK KUNG PUMAPASOK PA LANG
+    if (boss.isEntering) return; 
+
+    // ... (Yung the rest ng kidlat at attack logic panatilihin lang)
     ctx.shadowBlur = 30;
     ctx.shadowColor = "cyan";
 
@@ -3717,46 +3831,48 @@ window.adminForceStop = async function() {
 
 
 async function reportProgress(isFinal = false) {
-    if (!currentRoomId || state.gameMode !== 'classroom') return;
-    if (!myDocId) { myDocId = currentUser ? currentUser.uid : myName; }
+    if (!currentRoomId || state.gameMode !== 'classroom') return;
+    
+    if (!myDocId && currentUser) myDocId = currentUser.uid;
+    if (!myDocId) myDocId = myName; 
 
-    try {
-        const studentRef = doc(db, "rooms", currentRoomId, "students", myDocId);
-        
-        // --- CALCULATE ACCURACY ---
-        let estimatedHits = Math.floor(state.score / 10); 
-        let totalMisses = state.mistakes.length;
-        let totalAttempts = estimatedHits + totalMisses;
-        let accuracy = totalAttempts > 0 ? Math.round((estimatedHits / totalAttempts) * 100) : 100;
-        if (accuracy > 100) accuracy = 100; if (accuracy < 0) accuracy = 0;
+    try {
+        const studentRef = doc(db, "rooms", currentRoomId, "students", myDocId);
+        
+        // 🟢 FIX: Better Accuracy Calculation based on HISTORY logs
+        let correctCount = state.gameHistory.filter(h => h.status === 'correct').length;
+        let totalAttempts = state.gameHistory.length;
+        let accuracy = totalAttempts > 0 ? Math.round((correctCount / totalAttempts) * 100) : 100;
+        
+        // Weakness Analysis
+        let errorCounts = { '+': 0, '-': 0, 'x': 0, '÷': 0, 'Alg': 0 };
+        state.mistakes.forEach(m => { 
+            let qStr = m.q.toString();
+            if(qStr.includes('x') && qStr.includes('=')) errorCounts['Alg']++;
+            else if(qStr.includes('+')) errorCounts['+']++;
+            else if(qStr.includes('-')) errorCounts['-']++;
+            else if(qStr.includes('x')) errorCounts['x']++;
+            else if(qStr.includes('÷')) errorCounts['÷']++;
+        });
+        
+        let weakness = Object.keys(errorCounts).reduce((a, b) => errorCounts[a] > errorCounts[b] ? a : b);
+        if (errorCounts[weakness] === 0) weakness = "None";
 
-        // --- 📊 ANALYTICS: IDENTIFY WEAKNESS (Feature #5) ---
-        let errorCounts = { '+': 0, '-': 0, 'x': 0, '÷': 0, 'Alg': 0 };
-        state.mistakes.forEach(m => { 
-            let qStr = m.q.toString();
-            if(qStr.includes('x') && qStr.includes('=')) errorCounts['Alg']++;
-            else if(qStr.includes('+')) errorCounts['+']++;
-            else if(qStr.includes('-')) errorCounts['-']++;
-            else if(qStr.includes('x')) errorCounts['x']++; // 'x' for multiply symbol
-            else if(qStr.includes('÷')) errorCounts['÷']++;
-        });
-        // Find highest error count
-        let weakness = Object.keys(errorCounts).reduce((a, b) => errorCounts[a] > errorCounts[b] ? a : b);
-        if (errorCounts[weakness] === 0) weakness = "None"; // No weakness yet
-
-        await updateDoc(studentRef, { 
-            currentScore: state.score,
-            totalScore: state.score,
-            accuracy: accuracy,
-            roundsPlayed: state.roundsPlayed,
-            status: isFinal ? 'finished' : 'playing', 
-            inputLocked: state.inputLocked,
-            lastAnswer: window.inputField ? window.inputField.value : "",
-            lastActive: Date.now(),
-            needsHelp: state.helpRequested,
-            weakestLink: weakness // <--- SENDING ANALYTICS DATA
-        });
-    } catch(e) { console.error("Report Error:", e); } 
+        await setDoc(studentRef, { 
+            name: myName, 
+            currentScore: state.score,
+            totalScore: state.score, 
+            accuracy: accuracy,
+            roundsPlayed: state.roundsPlayed,
+            status: isFinal ? 'finished' : 'playing', 
+            inputLocked: state.inputLocked,
+            lastAnswer: window.inputField ? window.inputField.value : "",
+            lastActive: Date.now(), // 🟢 Updated every 3s
+            needsHelp: state.helpRequested,
+            weakestLink: weakness
+        }, { merge: true });
+        
+    } catch(e) { console.error("Report Error:", e); } 
 }
 
 // 7. UTILS
@@ -4053,43 +4169,84 @@ window.selectStudentRole = function() {
 };
 
 window.joinClassDirect = function() {
-    const directInput = document.getElementById("class-code-direct").value.toUpperCase().trim();
-    if (directInput.length < 4) {
-        alert("Invalid Class Code");
-        return;
-    }
-    // HACK: Pass to main join function
-    const mainJoinInput = document.getElementById("join-code-input");
-    if(mainJoinInput) {
-        mainJoinInput.value = directInput;
-        // 🚨 FIX: Wag itago ang modal dito! Hayaan ang joinRoom ang magsara kapag connected na.
-        // document.getElementById("class-selection-modal").classList.add("hidden"); <--- TANGGALIN ITO
-        window.joinRoom(); 
-    }
+    const directInput = document.getElementById("class-code-direct").value.toUpperCase().trim();
+    
+    // 1. Validation
+    if (directInput.length < 4) {
+        if(window.Sound) window.Sound.error();
+        alert("INVALID CLASS CODE");
+        return;
+    }
+
+    if(window.Sound) window.Sound.click();
+
+    // 🟢 2. IMMEDIATE CURTAIN DROP (Pantakip sa Main Menu)
+    // Ito ang magtatago sa "Flash" ng Main Dashboard
+    if(window.toggleCurtain) {
+        window.toggleCurtain(true, "VERIFYING CLEARANCE", "CONNECTING TO SECURE SERVER...", false);
+    }
+
+    // 3. Hide the Selection Modal IMMEDIATELY
+    document.getElementById("class-selection-modal").classList.add("hidden");
+    
+    // 🟢 4. FORCE HIDE MAIN MENU (Para sure na hindi sumilip)
+    document.getElementById("start-modal").classList.add("hidden");
+
+    // 5. Pass code to main logic
+    const mainJoinInput = document.getElementById("join-code-input");
+    if(mainJoinInput) {
+        mainJoinInput.value = directInput;
+        
+        // Delay ng konti para makita ang "Verifying" animation bago pumasok
+        setTimeout(() => {
+            window.joinRoom(); 
+        }, 800); 
+    }
 };
 
 window.joinRoom = async function() {
-    const codeInput = document.getElementById("join-code-input");
-    const code = codeInput.value.toUpperCase().trim();
-    if(code.length < 4) return alert("Invalid Room Code");
-    if(!window.validateName()) return; 
+    const codeInput = document.getElementById("join-code-input");
+    const code = codeInput.value.toUpperCase().trim();
+    
+    if(code.length < 4) {
+        window.toggleCurtain(false); // Cancel curtain if invalid
+        return alert("Invalid Room Code");
+    }
+    
+    if(!window.validateName()) {
+        window.toggleCurtain(false); // Cancel curtain if no name
+        return; 
+    }
 
-    try {
-        const roomRef = doc(db, "rooms", code);
-        const roomSnap = await getDoc(roomRef);
-        
-        if(!roomSnap.exists()) {
-            // 🚨 FIX: Stay on screen, just alert the error.
-            // Student is NOT trapped in void anymore.
-            return alert("Room not found! Check the code."); 
-        }
-        
-        // --- SUCCESS! NGAYON NATIN ISARA ANG MENUS ---
-        document.getElementById("start-modal").classList.add("hidden");
-        document.getElementById("mp-menu-modal").classList.add("hidden");
-        document.getElementById("class-selection-modal").classList.add("hidden"); // Close Class Menu
-        
-        const roomData = roomSnap.data();
+    // Kung hindi pa nakababa ang curtain (galing sa main menu), ibaba ito
+    const curtain = document.getElementById("class-curtain");
+    if (curtain && curtain.classList.contains("hidden")) {
+        window.toggleCurtain(true, "ACCESSING MAINFRAME", "SEARCHING FREQUENCY...", false);
+    }
+
+    try {
+        const roomRef = doc(db, "rooms", code);
+        const roomSnap = await getDoc(roomRef);
+        
+        if(!roomSnap.exists()) {
+            // 🛑 ERROR: Patayin ang Curtain at Ibalik ang Menu
+            setTimeout(() => {
+                window.toggleCurtain(false);
+                alert("Room not found! Check the code.");
+                document.getElementById("start-modal").classList.remove("hidden");
+            }, 500);
+            return;
+        }
+        
+        // --- SUCCESS: Hide Menus (Backup) ---
+        document.getElementById("start-modal").classList.add("hidden");
+        document.getElementById("mp-menu-modal").classList.add("hidden");
+        document.getElementById("class-selection-modal").classList.add("hidden"); // Close Class Menu
+        document.getElementById("profile-section").classList.add("hidden");
+        
+        const roomData = roomSnap.data();
+
+        // ... (ITULOY ANG DATING CODE SA BABA - WALANG BABAGUHIN DITO) ...
         
         if (roomData.mode === 'classroom') {
             state.gameMode = 'classroom';
@@ -4504,7 +4661,7 @@ window.toggleSubOps = function() {
 
 
 document.addEventListener("keydown", function(event) {
-    if (!state.isPlaying || state.isPaused) return;
+   if (!state.isPlaying || state.isPaused || state.isGlobalFreeze) return;
 
     // ✅ NEW: STRICT LOCK CHECK
     // If locked, BLOCK ALL INPUTS immediately
@@ -4621,89 +4778,118 @@ window.toggleHelp = function() {
     reportProgress(false);
 };
 
+// ==========================================
+// 🧠 CLASS DIAGNOSTICS & FINAL REPORT (REDESIGNED)
+// ==========================================
 window.generateClassDiagnostics = function() {
-    console.log("Generating Class Heatmap...");
-    
-    // 1. TOP PERFORMERS (Existing Logic)
-    const winnersContainer = document.getElementById('winners-podium');
-    if(winnersContainer) {
-        winnersContainer.innerHTML = "";
-        const medals = ["🥇", "🥈", "🥉"];
-        const winners = currentStudentData.slice(0, 3);
-        winners.forEach((w, index) => {
-            let rankClass = `rank-${index + 1}`;
-            winnersContainer.innerHTML += `
-                <div class="winner-card ${rankClass}">
-                    <span class="winner-medal">${medals[index]}</span>
-                    <div class="winner-name">${w.name}</div>
-                    <div class="winner-score">${w.totalScore}</div>
-                </div>`;
-        });
-    }
+    console.log("Generating Command Center Report...");
+    
+    // 1. UPDATE HEADER
+    document.getElementById("final-room-code").innerText = currentRoomId || "UNKNOWN";
+    document.getElementById("final-student-count").innerText = currentStudentData.length;
 
-    // 2. 📊 HEATMAP ANALYTICS (Feature #5)
-    // Tally weaknesses
-    let tally = { '+': 0, '-': 0, 'x': 0, '÷': 0, 'Alg': 0, 'None': 0 };
-    currentStudentData.forEach(s => {
-        let w = s.weakestLink || 'None';
-        if (tally[w] !== undefined) tally[w]++;
-    });
+    // 2. CALCULATE CLASS STATS
+    let totalScore = 0;
+    let totalAcc = 0;
+    let tally = { '+': 0, '-': 0, 'x': 0, '÷': 0, 'Alg': 0 };
+    
+    currentStudentData.forEach(s => {
+        totalScore += (s.totalScore || 0);
+        totalAcc += (s.accuracy || 100);
+        
+        // Weakness Tally
+        let w = s.weakestLink || 'None';
+        if (tally[w] !== undefined) tally[w]++;
+    });
 
-    // Find Topic with most failures
-    let worstTopic = Object.keys(tally).reduce((a, b) => (tally[a] > tally[b] && a !== 'None') ? a : b);
-    if (tally[worstTopic] === 0) worstTopic = "None";
+    let avgScore = currentStudentData.length ? Math.floor(totalScore / currentStudentData.length) : 0;
+    let avgAcc = currentStudentData.length ? Math.floor(totalAcc / currentStudentData.length) : 0;
 
-    const weaknessEl = document.getElementById('class-weakness-report');
-    if(weaknessEl) {
-        // Generate Bar Chart HTML
-        let chartHTML = `<div style="display:flex; align-items:flex-end; height:100px; gap:5px; margin-top:10px;">`;
-        
-        // Define labels mapping
-        const labels = { '+': 'ADD', '-': 'SUB', 'x': 'MUL', '÷': 'DIV', 'Alg': 'ALG' };
-        
-        for (let key in labels) {
-            let count = tally[key];
-            let height = count > 0 ? Math.max(10, (count / currentStudentData.length) * 100) : 5;
-            let color = key === worstTopic ? '#ff0055' : '#00e5ff';
-            
-            chartHTML += `
-                <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-                    <div style="width:100%; height:${height}%; background:${color}; border-radius:3px 3px 0 0; position:relative;">
-                        <span style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:10px; color:white;">${count}</span>
-                    </div>
-                    <span style="font-size:10px; color:#888; margin-top:5px;">${labels[key]}</span>
-                </div>
-            `;
-        }
-        chartHTML += `</div>`;
+    document.getElementById("final-avg-score").innerText = avgScore;
+    document.getElementById("final-avg-acc").innerText = avgAcc + "%";
 
-        let advice = "Class performance is stable.";
-        if (worstTopic !== 'None') advice = `CRITICAL ALERT: Class is struggling with [ ${labels[worstTopic]} ]. Review recommended.`;
+    // 3. GENERATE PODIUM (Top 3)
+    const podiumContainer = document.getElementById('winners-podium');
+    podiumContainer.innerHTML = "";
+    
+    // Ensure sorted by Score
+    const winners = [...currentStudentData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
+    const ranks = ['rank-1', 'rank-2', 'rank-3'];
+    const emojis = ['👑', '🥈', '🥉'];
+    
+    // Reorder for visual podium (2nd - 1st - 3rd)
+    const displayOrder = [1, 0, 2]; 
 
-        weaknessEl.innerHTML = `
-            <div style="margin-bottom:5px; color:#ccc;">TOPIC MASTERY HEATMAP</div>
-            ${chartHTML}
-            <div style="font-style:italic; color:${worstTopic !== 'None' ? '#ff0055' : '#00ff41'}; font-size:12px; margin-top:10px;">
-                "${advice}"
-            </div>
-        `;
-    }
+    displayOrder.forEach(idx => {
+        if(winners[idx]) {
+            let s = winners[idx];
+            let rClass = ranks[idx];
+            let emoji = emojis[idx];
+            
+            let html = `
+                <div class="podium-column ${rClass}">
+                    <div class="podium-avatar">${emoji}</div>
+                    <div class="podium-bar"><span class="rank-num">${idx + 1}</span></div>
+                    <div class="winner-name-tag">${s.name}</div>
+                    <div style="color:#ffd700; font-weight:bold; font-size:14px;">${s.totalScore}</div>
+                </div>
+            `;
+            podiumContainer.innerHTML += html;
+        }
+    });
 
-    // 3. STRUGGLING STUDENTS LIST
-    const strugglingList = document.getElementById('struggling-students-list');
-    const struggling = currentStudentData.filter(s => s.accuracy < 60); // < 60% accuracy
-    
-    if(strugglingList) {
-        if(struggling.length > 0) {
-            strugglingList.innerHTML = struggling.map(s => 
-                `<div style="color:#ff5555; margin-bottom:5px; border-bottom:1px solid #333; padding-bottom:2px;">
-                    ⚠️ <b>${s.name}</b> (${s.accuracy}%) <span style="font-size:10px; color:#aaa;">Weakness: ${s.weakestLink || '?'}</span>
-                </div>`
-            ).join("");
-        } else {
-            strugglingList.innerHTML = `<span style="color:#00ff41;">ALL SYSTEMS NOMINAL. No critical failures.</span>`;
-        }
-    }
+    // 4. GENERATE HEATMAP (Visual Bars)
+    const weaknessEl = document.getElementById('class-weakness-report');
+    weaknessEl.innerHTML = "";
+    
+    // Find hardest topic
+    let maxWeaknessVal = 0;
+    let hardestTopic = "NONE";
+    
+    const labels = { '+': 'ADD', '-': 'SUB', 'x': 'MUL', '÷': 'DIV', 'Alg': 'ALG' };
+    
+    Object.keys(tally).forEach(key => {
+        if (tally[key] > maxWeaknessVal) {
+            maxWeaknessVal = tally[key];
+            hardestTopic = labels[key];
+        }
+    });
+    
+    document.getElementById("final-hardest-topic").innerText = hardestTopic;
+
+    // Draw Bars
+    Object.keys(labels).forEach(key => {
+        let count = tally[key];
+        let height = (currentStudentData.length > 0) ? (count / currentStudentData.length) * 100 : 0;
+        let color = (labels[key] === hardestTopic && count > 0) ? '#ff0055' : '#00e5ff';
+        
+        let barHtml = `
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; height:100%;">
+                <div style="font-size:10px; color:#fff; margin-bottom:2px;">${count}</div>
+                <div style="width:100%; height:${Math.max(5, height)}%; background:${color}; border-radius:4px 4px 0 0; opacity:0.8;"></div>
+                <div style="font-size:10px; color:#888; margin-top:5px; font-family:'Rajdhani';">${labels[key]}</div>
+            </div>
+        `;
+        weaknessEl.innerHTML += barHtml;
+    });
+
+    // 5. STRUGGLING STUDENTS LIST
+    const listEl = document.getElementById('struggling-students-list');
+    const struggling = currentStudentData.filter(s => s.accuracy < 60);
+
+    if (struggling.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:10px; color:#00ff41; border:1px dashed #00ff41;">✅ ALL AGENTS PERFORMING OPTIMALLY</div>`;
+    } else {
+        listEl.innerHTML = "";
+        struggling.forEach(s => {
+            listEl.innerHTML += `
+                <div style="border-bottom:1px solid #333; padding:5px 0; display:flex; justify-content:space-between;">
+                    <span style="color:#ff5555;">⚠️ ${s.name}</span>
+                    <span style="color:#aaa;">Acc: ${s.accuracy}% | Weakness: ${s.weakestLink}</span>
+                </div>
+            `;
+        });
+    }
 };
 
 window.initBossShield = function(boss) {
@@ -5106,68 +5292,57 @@ document.addEventListener("keydown", function(event) {
     }
 });
 
-// --- 📊 CAPSTONE FEATURE: FULL GAME REVIEW ---
-window.viewGameHistory = function() {
-    if(window.Sound) window.Sound.click();
-    
-    const logContainer = document.getElementById("mistakes-log");
-    const btn = document.getElementById("view-mistakes-btn");
-    
-    if (!logContainer || !btn) return;
+// 🟢 NEW: AUTO-RENDER TACTICAL LOG (Pinalitan ang lumang viewGameHistory)
+window.renderTacticalLog = function() {
+    const logContainer = document.getElementById("mistakes-log");
+    if (!logContainer) return;
+    logContainer.innerHTML = ""; 
 
-    // TOGGLE LOGIC
-    if (logContainer.classList.contains("hidden")) {
-        // OPEN REVIEW
-        logContainer.classList.remove("hidden");
-        btn.innerText = "🔼 HIDE REVIEW";
-        logContainer.innerHTML = ""; 
-        
-        const history = state.gameHistory || [];
+    const history = state.gameHistory || [];
 
-        if (history.length === 0) {
-            logContainer.innerHTML = `
-                <div class="log-item" style="text-align:center; color:#888; padding:20px; border:1px dashed #444; font-size:14px;">
-                    NO DATA RECORDED.<br>
-                    <span style="font-size:12px; color:#555;">BATTLE HAS NOT STARTED.</span>
-                </div>`;
-        } else {
-            // Sort by latest first
-            history.slice().reverse().forEach((item, index) => {
-                let isCorrect = item.status === 'correct';
-                let color = isCorrect ? '#00ff41' : (item.status === 'missed' ? '#ff0055' : 'orange'); 
-                let label = item.status.toUpperCase();
-                
-                // Generate Explanation
-                let explanation = (window.getExplanation) ? window.getExplanation(item.q.toString(), item.a) : "Math rule.";
-                let uniqueId = `rev-${index}`;
+    if (history.length === 0) {
+        logContainer.innerHTML = `
+            <div style="text-align:center; color:#888; padding:40px; border:1px dashed #444; border-radius: 8px;">
+                <h2 style="font-family:'Orbitron'; color:#555;">NO DATA RECORDED</h2>
+                <p>Battle has not started or no inputs were detected.</p>
+            </div>`;
+    } else {
+        // Sort by latest first
+        history.slice().reverse().forEach((item, index) => {
+            let isCorrect = item.status === 'correct';
+            let color = isCorrect ? '#00ff41' : (item.status === 'missed' ? '#ff0055' : '#ffd700'); 
+            let label = item.status.toUpperCase();
+            
+            // Generate Explanation
+            let explanation = (window.getExplanation) ? window.getExplanation(item.q.toString(), item.a) : "Mathematical operation rule.";
+            let uniqueId = `rev-${index}`;
 
-                let html = `
-                    <div class="log-item" style="border-left: 4px solid ${color}; background: rgba(0,0,0,0.8); margin-bottom: 8px; padding: 12px; border-radius: 0 4px 4px 0; text-align: left; border-bottom: 1px solid #333;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="color:white; font-size:18px; font-family:'Orbitron';">
-                                    ${item.q} <span style="color:#888;">=</span> <span style="color:${isCorrect?'#00ff41':'#ffd700'}">${item.a}</span>
-                                </div>
-                                <div style="font-size:11px; color:#aaa; margin-top:2px;">YOU TYPED: <span style="color:${isCorrect?'#fff':'#ff5555'}">${item.input}</span></div>
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="color:${color}; font-weight:bold; font-size:10px; letter-spacing:1px; margin-bottom:4px;">${label}</div>
-                                <button class="btn text-only" style="padding:2px 8px; font-size:10px; border:1px solid ${color}; color:${color};" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
-                                    ${isCorrect ? '🔍 ANALYZE' : '💡 SOLUTION'}
-                                </button>
-                            </div>
-                        </div>
-                        <div id="${uniqueId}" class="hidden" style="margin-top:10px; padding:10px; background:rgba(255, 255, 255, 0.05); border-left:2px solid ${color}; color:#ccc; font-size:12px; font-family:'Courier New'; white-space: pre-wrap;">${explanation}</div>
-                    </div>`;
-                logContainer.innerHTML += html;
-            });
-        }
-    } else {
-        // CLOSE REVIEW
-        logContainer.classList.add("hidden");
-        btn.innerText = "📂 REVIEW MISSION LOG";
-    }
+            let html = `
+                <div style="border-left: 4px solid ${color}; background: rgba(0,0,0,0.6); margin-bottom: 10px; padding: 15px; border-radius: 4px; border-bottom: 1px solid #222;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="color:white; font-size:22px; font-family:'Orbitron';">
+                                ${item.q} <span style="color:#888;">=</span> <span style="color:${isCorrect?'#00ff41':'#ffd700'}">${item.a}</span>
+                            </div>
+                            <div style="font-size:12px; color:#aaa; margin-top:5px;">YOU TYPED: <span style="color:${isCorrect?'#fff':'#ff5555'}; font-weight:bold;">${item.input}</span></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="color:${color}; font-weight:bold; font-size:12px; letter-spacing:1px; margin-bottom:8px;">${label}</div>
+                            <button class="btn text-only" style="padding:4px 10px; font-size:10px; border:1px solid ${color}; color:${color}; margin:0;" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
+                                ${isCorrect ? '🔍 ANALYZE' : '💡 SOLUTION'}
+                            </button>
+                        </div>
+                    </div>
+                    <div id="${uniqueId}" class="hidden" style="margin-top:15px; padding:15px; background:rgba(255, 255, 255, 0.05); border-left:2px solid ${color}; color:#ddd; font-size:14px; font-family:'Courier New'; white-space: pre-wrap;">${explanation}</div>
+                </div>`;
+            logContainer.innerHTML += html;
+        });
+    }
 };
+
+// 🟢 Idagdag ang render call na ito sa pinakadulo ng window.gameOver function mo:
+// Hanapin ang window.gameOver function at bago ito matapos (sa loob ng setTimeout kung may cinematic), idagdag ang:
+// window.renderTacticalLog();
 
 // --- 🎖️ MISSION DEBRIEF SYSTEM (Capstone Feature) ---
 window.generateMissionDebrief = function() {
@@ -6714,3 +6889,361 @@ document.addEventListener("keydown", function(event) {
         if (event.key === "Escape") window.closeCodex();
     }
 });
+
+// ==========================================
+// 📊 AGENT SERVICE RECORD & ANALYTICS LOGIC
+// ==========================================
+
+let perfChart = null; // Store chart instance
+
+// 1. OPEN DASHBOARD (WITH LIVE DATA FETCH)
+window.openAgentDashboard = async function() {
+    if (!currentUser) return alert("Please Login First.");
+    if(window.Sound) window.Sound.click();
+
+    // Show Loading State (Optional visual cue)
+    const dashModal = document.getElementById("agent-dashboard-modal");
+    if (!dashModal) return alert("Dashboard Modal Missing in HTML!");
+    
+    // Hide Main Menus
+    document.getElementById("start-modal").classList.add("hidden");
+    
+    // Show Dashboard
+    dashModal.classList.remove("hidden");
+    dashModal.style.display = 'flex'; 
+
+    try {
+        // 🟢 FORCE FETCH: Kunin ang pinakabagong data sa database
+        const docRef = doc(db, "users", currentUser.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            // Merge bago at lumang data
+            currentUser = { ...currentUser, ...docSnap.data() };
+            console.log("📥 Latest Data Loaded:", currentUser.matchHistory);
+        }
+
+        // Set Basic Info
+        document.getElementById("dash-agent-name").innerText = currentUser.username || "AGENT";
+        document.getElementById("dash-rank").innerText = getRankInfo(currentUser.totalXP || 0).title;
+        
+        let currentAvatar = currentUser.avatar || 'https://img.icons8.com/color/96/000000/astronaut.png';
+        document.getElementById("dash-avatar-img").src = currentAvatar;
+
+        // Render contents
+        if(window.renderBadges) window.renderBadges();
+        
+        // Draw Chart (Update UI)
+        setTimeout(() => {
+            if(window.updateDashboardChart) window.updateDashboardChart(); 
+        }, 100);
+
+    } catch (error) {
+        console.error("Dashboard Error:", error);
+    }
+};
+
+window.closeAgentDashboard = function() {
+    if(window.Sound) window.Sound.click();
+    document.getElementById("agent-dashboard-modal").classList.add("hidden");
+    
+    // Ibalik ang main menus
+    document.getElementById("start-modal").classList.remove("hidden");
+    document.getElementById("profile-section").classList.remove("hidden");
+};
+
+// 2. AVATAR SYSTEM
+window.toggleAvatarSelect = function() {
+    const box = document.getElementById("avatar-selection-box");
+    box.classList.toggle("hidden");
+    
+    if (!box.classList.contains("hidden")) {
+        // Mga pagpipiliang Profile Pictures (Sci-Fi Icons)
+        const avatars = [
+            "https://img.icons8.com/color/96/000000/astronaut.png",
+            "https://img.icons8.com/color/96/000000/bot.png",
+            "https://img.icons8.com/color/96/000000/hacker.png",
+            "https://img.icons8.com/color/96/000000/ninja-head.png",
+            "https://img.icons8.com/external-flaticons-flat-flat-icons/64/000000/external-alien-space-flaticons-flat-flat-icons.png",
+            "https://img.icons8.com/color/96/000000/iron-man.png"
+        ];
+        
+        let html = "";
+        avatars.forEach(url => {
+            html += `<img src="${url}" class="avatar-option" style="width:50px; height:50px; background:#222; border-radius:5px;" onclick="selectAvatar('${url}')">`;
+        });
+        document.getElementById("avatar-grid").innerHTML = html;
+    }
+};
+
+window.selectAvatar = async function(url) {
+    if(window.Sound) window.Sound.click();
+    document.getElementById("dash-avatar-img").src = url;
+    document.getElementById("avatar-selection-box").classList.add("hidden");
+    
+    currentUser.avatar = url;
+    await updateDoc(doc(db, "users", currentUser.uid), { avatar: url });
+};
+
+// 3. BADGES SYSTEM (Dummy logic for now)
+function renderBadges() {
+    const grid = document.getElementById("badges-grid");
+    const unlocked = currentUser.badges || [];
+    
+    const allBadges = [
+        { id: 'first_blood', icon: '🩸', title: 'First Mission' },
+        { id: 'combo_10', icon: '🔥', title: '10x Combo' },
+        { id: 'boss_slayer', icon: '☠️', title: 'Boss Defeated' },
+        { id: 'accuracy_90', icon: '🎯', title: 'Sharpshooter' }
+    ];
+
+    let html = "";
+    allBadges.forEach(b => {
+        let isHas = unlocked.includes(b.id);
+        html += `<div class="badge-icon ${isHas ? 'unlocked' : ''}" title="${b.title}">${b.icon}</div>`;
+    });
+    grid.innerHTML = html;
+}
+
+// 4. CHART.JS & TABLE RENDERER (ROBUST VERSION)
+window.updateDashboardChart = function() {
+    // Safety check for user data
+    const history = (currentUser && currentUser.matchHistory) ? currentUser.matchHistory : [];
+    
+    // Safety check for UI elements (Avoid crash if modal is closed)
+    const chartFilter = document.getElementById("chart-filter");
+    const topicFilter = document.getElementById("topic-filter");
+    const tbody = document.getElementById("match-history-body");
+    const canvas = document.getElementById('performanceChart');
+
+    if (!chartFilter || !topicFilter || !tbody || !canvas) return;
+
+    const modeFilter = chartFilter.value;
+    const topicFilterVal = topicFilter.value;
+
+    // Filter Logic
+    let filteredData = history.filter(match => {
+        let modeMatch = modeFilter === 'all' || match.mode === modeFilter;
+        let topicMatch = topicFilterVal === 'all' || (match.ops && match.ops.includes(topicFilterVal));
+        return modeMatch && topicMatch;
+    });
+
+    // Populate Table
+    tbody.innerHTML = "";
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="padding: 30px; color: #666; font-style: italic; border-bottom: 1px solid #333;">NO COMBAT RECORDS FOUND.</td></tr>`;
+    } else {
+        // Reverse para latest ang nasa taas
+        filteredData.slice().reverse().forEach(match => {
+            let dateObj = new Date(match.date);
+            let dateStr = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let accColor = match.accuracy >= 80 ? '#00ff41' : (match.accuracy >= 50 ? '#ffd700' : '#ff0055');
+            let opsStr = match.ops ? match.ops.join(' ') : 'Mixed';
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #222;">
+                    <td style="color: #ccc; padding: 10px;">${dateStr}</td>
+                    <td style="color: #00e5ff; font-weight: bold; padding: 10px;">${match.mode.toUpperCase()}</td>
+                    <td style="color: #aaa; padding: 10px;">[ ${opsStr} ]</td>
+                    <td style="color: #ffd700; font-family: 'Orbitron'; padding: 10px;">${match.score}</td>
+                    <td style="color: ${accColor}; font-weight: bold; padding: 10px;">${match.accuracy}%</td>
+                </tr>
+            `;
+        });
+    }
+
+    // Chart Logic
+    if (typeof Chart === 'undefined') return;
+    
+    const ctx = canvas.getContext('2d');
+    if (perfChart) perfChart.destroy();
+
+    // Default Empty State (Flat Line)
+    let labels = ['Start'];
+    let accData = [0];
+    let scoreData = [0];
+
+    if (filteredData.length > 0) {
+        labels = filteredData.map((m, i) => `M${i+1}`);
+        accData = filteredData.map(m => m.accuracy);
+        scoreData = filteredData.map(m => m.score);
+    }
+
+    perfChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Accuracy (%)',
+                    data: accData,
+                    borderColor: '#00ff41',
+                    backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                },
+                {
+                    label: 'Score',
+                    data: scoreData,
+                    borderColor: '#ffd700',
+                    borderDash: [5, 5],
+                    yAxisID: 'y1',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { 
+                    type: 'linear', display: true, position: 'left', min: 0, max: 100, 
+                    title: { display: true, text: 'Accuracy', color: '#00ff41' },
+                    grid: { color: '#222' }, ticks: { color: '#888' }
+                },
+                y1: { 
+                    type: 'linear', display: true, position: 'right', 
+                    title: { display: true, text: 'Score', color: '#ffd700' },
+                    grid: { drawOnChartArea: false }, ticks: { color: '#888' } 
+                },
+                x: { 
+                    grid: { color: '#222' }, ticks: { color: '#888' } 
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#fff', font: { family: 'Rajdhani', size: 12 } } }
+            }
+        }
+    });
+};
+
+// 5. 🟢 CRITICAL: ROBUST SAVE FUNCTION (FIXED MATH)
+window.saveMatchRecord = async function() {
+    if (!currentUser || !currentUser.uid) {
+        console.warn("⚠️ Cannot save: No user logged in.");
+        return;
+    }
+
+    // Prevent saving empty spam games
+    if (state.score === 0 && state.gameHistory.length === 0) {
+        return; 
+    }
+
+    console.log("💾 SAVING MISSION DATA...");
+
+    // 🟢 BETTER MATH FOR ACCURACY
+    // Bilangin ang totoong tama at mali base sa history log
+    let correctCount = state.gameHistory.filter(h => h.status === 'correct').length;
+    let totalAttempts = state.gameHistory.length;
+    
+    let finalAcc = 0;
+    if (totalAttempts > 0) {
+        finalAcc = Math.round((correctCount / totalAttempts) * 100);
+    }
+    
+    // Fallback: Kung walang history pero may score (edge case)
+    if (totalAttempts === 0 && state.score > 0) finalAcc = 100;
+
+    let matchRecord = {
+        date: Date.now(),
+        mode: state.gameMode || 'solo',
+        ops: state.selectedOps || ['+'],
+        difficulty: state.difficulty || 'medium',
+        score: state.score,
+        accuracy: finalAcc
+    };
+
+    // Update Local History
+    let history = (currentUser.matchHistory) ? [...currentUser.matchHistory] : [];
+    history.push(matchRecord);
+    
+    // Limit to last 50 games
+    if (history.length > 50) {
+        history = history.slice(history.length - 50); 
+    }
+    currentUser.matchHistory = history;
+
+    // Save to Firebase
+    try {
+        const userRef = doc(db, "users", currentUser.uid);
+        await updateDoc(userRef, {
+            matchHistory: history,
+            coins: state.coins, // Save money updates too
+            lastActive: Date.now()
+        });
+
+        console.log("✅ RECORD SAVED! Acc:", finalAcc + "%");
+        
+        const btn = document.getElementById("real-submit-btn");
+        if(btn) btn.innerText = "✅ DATA SECURED";
+
+    } catch(e) { 
+        console.error("❌ SAVE ERROR:", e);
+        if (e.code === 'not-found') {
+             await setDoc(doc(db, "users", currentUser.uid), { matchHistory: history, coins: state.coins }, { merge: true });
+        }
+    }
+};
+
+// ==========================================
+// 💾 SMART SAVE & EXIT FOR TEACHER
+// ==========================================
+window.saveAndExitClass = function() {
+    if(window.Sound) window.Sound.click();
+
+    // 1. Check if there is data
+    if (!currentStudentData || currentStudentData.length === 0) {
+        alert("No student data to save.");
+        location.reload();
+        return;
+    }
+
+    // 2. Generate CSV Content
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "RANK,AGENT NAME,TOTAL SCORE,ROUNDS PLAYED,ACCURACY,WEAKEST TOPIC,STATUS\n";
+
+    // Sort by Score
+    let sortedData = [...currentStudentData].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+
+    sortedData.forEach((s, index) => {
+        let row = [
+            index + 1,
+            `"${s.name}"`, // Quote name to handle commas
+            s.totalScore || 0,
+            s.roundsPlayed || 0,
+            (s.accuracy || 0) + "%",
+            s.weakestLink || "None",
+            s.status || "offline"
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    // 3. Create Download Link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `MISSION_REPORT_${currentRoomId}_${timestamp}.csv`);
+    document.body.appendChild(link);
+
+    // 4. Trigger Download & Exit
+    link.click();
+    document.body.removeChild(link);
+
+    // Delay exit slightly to ensure download starts
+    setTimeout(() => {
+        if(confirm("Report Downloaded. Close Command Center?")) {
+            // Linisin ang classroom sa database (Optional: Set status to finished permanently)
+            updateDoc(doc(db, "rooms", currentRoomId), { status: 'archived' });
+            location.reload(); // Reset to Main Menu
+        }
+    }, 1000);
+};
