@@ -165,7 +165,7 @@ const assets = {
         'boss_god': { src: 'boss_god.png', img: new Image() }
     },
     misc: {
-        'city': { src: 'city_bg.png', img: new Image() },
+        'city': { src: '', img: new Image() },
         'supply': { src: 'supply_crate.png', img: new Image() }
     }
 };
@@ -7247,3 +7247,4 @@ window.saveAndExitClass = function() {
         }
     }, 1000);
 };
+
