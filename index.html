@@ -8,7 +8,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title>JESSMATH</title>
+    <title>JESSMATH: ELITE DEFENSE</title>
 
     
 
@@ -1506,9 +1506,9 @@
 
         
 
-        <div id="teacher-dashboard" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #05070a; z-index: 999999; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; overflow: hidden;">
+        <<div id="teacher-dashboard" class="hidden">
     
-    <div class="dashboard-header" style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: rgba(0, 20, 40, 0.9); border-bottom: 2px solid #00e5ff; box-shadow: 0 5px 20px rgba(0, 229, 255, 0.2);">
+    <div class="dashboard-header">
         <div class="header-status">
             <h2 class="neon-text" style="margin: 0; font-size: 24px; font-family: 'Orbitron'; color: #00e5ff; text-shadow: 0 0 10px #00e5ff;">CLASS-<span id="dash-room-code">####</span></h2>
             <div id="dash-status" style="color: #ffd700; font-family: 'Courier New', monospace; margin-top: 5px; font-weight: bold;">AGENTS: 0</div>
@@ -1519,90 +1519,104 @@
             <button id="btn-freeze-toggle" class="btn secondary hidden" onclick="window.adminFreezeAll()" style="margin: 0; padding: 10px 30px; font-size: 14px; border-color: #00e5ff; color: #00e5ff;">❄️ FREEZE</button>
             <button id="btn-stop-round" class="btn danger" onclick="window.adminForceStop()" style="margin: 0; padding: 10px 30px; font-size: 14px; background: rgba(255,0,85,0.2); border-color: #ff0055; color: #ff0055;">⏹ STOP ROUND</button>
             <div style="width: 2px; height: 30px; background: #333; margin: 0 10px;"></div>
-            <button id="btn-exit-dash" class="btn text-only" onclick="location.reload()" style="margin: 0; padding: 10px; color: #888;">EXIT</button>
+            <button id="btn-exit-dash" class="btn text-only" onclick="window.closeClassEntirely()" style="margin: 0; padding: 10px; color: #888;">EXIT</button>
         </div>
     </div>
 
-    <div class="dashboard-viewport" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 0 20px; overflow: hidden; min-height: 0;">
+    <div class="dashboard-viewport">
         
-        <div class="dash-tabs" style="flex-shrink: 0; display: flex; gap: 10px; border-bottom: 1px solid #333; margin: 0; padding: 15px 0 0 0;">
+        <div class="dash-tabs">
             <button class="tab-btn active" onclick="window.switchDashTab('roster', event)">📡 LIVE ROSTER</button>
             <button class="tab-btn" onclick="window.switchDashTab('grid', event)">🕵️‍♂️ SPY GRID</button>
             <button class="tab-btn" onclick="window.switchDashTab('podium', event)">🏆 RANKINGS</button>
             <button class="tab-btn" onclick="window.switchDashTab('reports', event)">📄 DATA REPORTS</button>
         </div>
 
-        <div id="view-roster" class="dash-view" style="flex-grow: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 15px 0;">
-           <div id="roster-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; align-content: flex-start;"></div>
+        <div id="view-roster" class="dash-view">
+           <div id="roster-grid"></div>
         </div>
         
-        <div id="view-grid" class="dash-view hidden" style="flex-grow: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; margin: 0; padding: 10px 0;">
-            <div id="spy-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; align-content: flex-start;">
-                </div>
+        <div id="view-grid" class="dash-view hidden">
+            <div id="spy-grid-container"></div>
         </div>
 
-        <div id="view-podium" class="dash-view hidden" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; margin: 0; padding: 10px 0;">
-            <div class="nexus-podium-container" style="flex-shrink: 0; min-height: 250px; height: 35vh; margin-top: 10px;">
-                <div class="nexus-holo-pillar silver-tier">
-                    <div class="nexus-holo-avatar">🥈</div>
-                    <div class="nexus-agent-card"><div id="p2-name" class="nexus-name">AWAITING</div><div id="p2-score" class="nexus-score">0 <span>PTS</span></div></div>
-                    <div class="nexus-energy-core"></div><div class="nexus-projector-base"></div>
-                </div>
-                <div class="nexus-holo-pillar gold-tier">
-                    <div class="nexus-holo-avatar god-float">👑</div>
-                    <div class="nexus-agent-card god-card"><div id="p1-name" class="nexus-name">AWAITING</div><div id="p1-score" class="nexus-score">0 <span>PTS</span></div></div>
-                    <div class="nexus-energy-core"></div><div class="nexus-projector-base"></div>
-                </div>
-                <div class="nexus-holo-pillar bronze-tier">
-                    <div class="nexus-holo-avatar">🥉</div>
-                    <div class="nexus-agent-card"><div id="p3-name" class="nexus-name">AWAITING</div><div id="p3-score" class="nexus-score">0 <span>PTS</span></div></div>
-                    <div class="nexus-energy-core"></div><div class="nexus-projector-base"></div>
-                </div>
+        <div id="view-podium" class="dash-view hidden">
+            <div class="grand-orbits">
+                <div class="g-orbit g-orbit-1"></div>
+                <div class="g-orbit g-orbit-2"></div>
+                <div class="g-orbit g-orbit-3"></div>
             </div>
-            <div class="nexus-runner-up-list" style="flex-grow: 1; overflow-y: auto; margin-top: 5px; border-top: 1px solid #334; padding-top: 10px;">
-                <h3 class="nexus-list-title" style="position: sticky; top: -10px; background: rgba(5, 10, 15, 0.95); z-index: 5; margin-top: 0; padding-bottom: 5px;">ADDITIONAL OPERATIVES</h3>
+            
+            <h2 class="grand-leaderboard-title">CURRENT LEADERBOARD</h2>
+            
+            <div class="grand-podium-container">
+                <div class="grand-pillar silver-pillar">
+                    <div class="css-medal silver-medal"><div class="medal-ribbon"></div><div class="medal-coin">⭐</div></div>
+                    <div id="p2-name" class="grand-name">AWAITING</div>
+                    <div id="p2-score" class="grand-score">0 <span>PTS</span></div>
+                    <div class="grand-beam"></div><div class="grand-base-ring"></div>
+                </div>
+                <div class="grand-pillar gold-pillar">
+                    <div class="css-medal gold-medal"><div class="medal-ribbon"></div><div class="medal-coin">👑</div></div>
+                    <div id="p1-name" class="grand-name">AWAITING</div>
+                    <div id="p1-score" class="grand-score">0 <span>PTS</span></div>
+                    <div class="grand-beam"></div><div class="grand-base-ring"></div>
+                </div>
+                <div class="grand-pillar bronze-pillar">
+                    <div class="css-medal bronze-medal"><div class="medal-ribbon"></div><div class="medal-coin">⭐</div></div>
+                    <div id="p3-name" class="grand-name">AWAITING</div>
+                    <div id="p3-score" class="grand-score">0 <span>PTS</span></div>
+                    <div class="grand-beam"></div><div class="grand-base-ring"></div>
+                </div>
+                <div class="grand-platform"></div>
+            </div>
+            
+            <div class="nexus-runner-up-list">
+                <h3 class="nexus-list-title">ADDITIONAL OPERATIVES</h3>
                 <div id="podium-list-body"></div>
             </div>
         </div>
 
-        <div id="view-reports" class="dash-view hidden" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; margin: 0; padding: 0;">
+        <div id="view-reports" class="dash-view hidden">
             
-            <div style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: stretch; height: 65px; margin: 10px 0;">
-                <div style="display: flex; gap: 15px; height: 100%;">
-                    <div class="stat-box" style="background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 8px; border-left: 4px solid #ffd700; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center;">
-                        <span style="color:#888; font-size:11px; display:block;">CLASS AVG SCORE</span>
-                        <span id="rep-avg-score" style="color:#ffd700; font-size:22px; font-family:'Orbitron'; font-weight:bold; line-height: 1;">0</span>
+            <div id="reports-header-bar">
+                <div class="reports-stats-group">
+                    <div class="stat-box yellow-box">
+                        <span class="stat-label">CLASS AVG SCORE</span>
+                        <span id="rep-avg-score" class="stat-value yellow-text">0</span>
                     </div>
-                    <div class="stat-box" style="background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 8px; border-left: 4px solid #00ff41; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center;">
-                        <span style="color:#888; font-size:11px; display:block;">CLASS ACCURACY</span>
-                        <span id="rep-avg-acc" style="color:#00ff41; font-size:22px; font-family:'Orbitron'; font-weight:bold; line-height: 1;">0%</span>
+                    <div class="stat-box green-box">
+                        <span class="stat-label">CLASS ACCURACY</span>
+                        <span id="rep-avg-acc" class="stat-value green-text">0%</span>
                     </div>
                 </div>
-                <button class="btn secondary" onclick="window.exportToCSV()" style="margin:0; padding: 0 20px; height: 100%; border-color:#00e5ff; color:#00e5ff; font-weight:bold; font-size: 14px;">
-                    💾 EXPORT CSV
-                </button>
+                <button class="btn secondary export-btn" onclick="window.exportToCSV()">💾 EXPORT CSV</button>
             </div>
             
-            <div style="flex-grow: 1; min-height: 0; overflow-y: auto; background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); margin-bottom: 20px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Rajdhani'; font-size: 15px;">
-                    <thead style="background: #0a0f1a; position: sticky; top: 0; z-index: 10; box-shadow: 0 5px 10px rgba(0,0,0,0.5);">
-                        <tr style="color: #00e5ff; font-family:'Orbitron'; font-size:11px; letter-spacing:1px;">
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff;">AGENT NAME</th>
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff; text-align:center;">ROUNDS</th>
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff; text-align:center;">TOTAL SCORE</th>
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff; text-align:center;">ACCURACY</th>
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff; text-align:center;">STATUS</th>
-                            <th style="padding: 12px 15px; border-bottom: 2px solid #00e5ff; text-align:center;">ACTION</th>
+            <div id="reports-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>AGENT NAME</th>
+                            <th class="center-text">ROUNDS</th>
+                            <th class="center-text">TOTAL SCORE</th>
+                            <th class="center-text">ACCURACY</th>
+                            <th class="center-text">STATUS</th>
+                            <th class="center-text">ACTION</th>
                         </tr>
                     </thead>
-                    <tbody id="report-list-body">
-                        </tbody>
+                    <tbody id="report-list-body"></tbody>
                 </table>
             </div>
+            
         </div>
 
-    </div>
+    </div> </div> ```
+
+
 </div>
+
+
 
 </div>
 
@@ -2229,101 +2243,52 @@
 
 
 <div id="jessbot-sidebar" class="tactical-sidebar right-side closed">
-
     <div class="sidebar-scanline"></div>
-
     
-
-    <div class="ts-header" style="border-color: #ffd700; flex-direction: row;">
-
-        <div style="text-align: left; flex-grow: 1;">
-
-            <h3 class="ts-title" style="color: #ffd700;"><span class="blink" style="color:#ffd700;">⚙️</span> N.E.X.U.S.</h3>
-
-            <p class="ts-sub" style="color: #aa8800;">MULTIFUNCTION TERMINAL</p>
-
-        </div>
-
+    <div class="ts-header" style="border-color: #ffd700; flex-direction: row-reverse;">
         <button class="ts-close-btn" style="color: #ffd700;" onclick="window.toggleNexusTerminal()">✖</button>
-
+        <div style="text-align: left;">
+            <h3 class="ts-title" style="color: #ffd700;"><span class="blink" style="color:#ffd700;">⚙️</span> JESSBOT</h3>
+            <p class="ts-sub" style="color: #aa8800;">TACTICAL OVERSEER V7</p>
+        </div>
     </div>
-
-
 
     <div class="ts-tabs" style="border-bottom: 1px solid #ffd700; margin-bottom: 10px;">
-
         <button class="ts-tab active" id="tab-btn-jessbot" onclick="window.switchNexusTab('jessbot')" style="color:#ffd700;">🤖 ADVISOR</button>
-
         <button class="ts-tab" id="tab-btn-solver" onclick="window.switchNexusTab('solver')" style="color:#888;">🧮 SOLVER</button>
-
     </div>
-
-
 
     <div id="nexus-view-jessbot" class="nexus-view">
-
         <div id="ai-waveform" class="waveform-container hidden">
-
             <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-
         </div>
-
-
 
         <div id="nexus-chat-history" class="ts-content" style="display: flex; flex-direction: column; gap: 15px;">
-
             <div class="data-block ai-block" style="border-color: #ffd700;">
-
                 <span class="block-label" style="color: #ffd700;">JESSBOT // SYSTEM</span>
-
                 Commander, I am operating on secure local channels. Select a tactical protocol below to analyze your data.
-
             </div>
-
         </div>
-
-
 
         <div class="ai-command-grid">
-
             <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('analyze')"><span class="cmd-icon">📊</span> ANALYSIS</button>
-
             <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('status')"><span class="cmd-icon">📡</span> STATUS</button>
-
             <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('weakness')"><span class="cmd-icon">⚠️</span> WEAKNESS</button>
-
             <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('tip')"><span class="cmd-icon">💡</span> TACTICS</button>
-
         </div>
-
     </div>
-
-
 
     <div id="nexus-view-solver" class="nexus-view hidden" style="display: flex; flex-direction: column; height: 100%;">
-
         <div class="cli-input-box" style="margin-bottom: 15px; border-color: #00e5ff;">
-
             <span class="cli-prompt" style="color: #00e5ff;">></span>
-
             <input type="text" id="solver-input" placeholder="e.g. 2x + 5 = 15" onkeypress="if(event.key==='Enter') window.runTacticalSolver()">
-
             <button class="cli-send-btn" onclick="window.runTacticalSolver()" style="color: #00e5ff;">DECRYPT</button>
-
         </div>
-
         
-
         <div id="solver-output" class="ts-content" style="flex-grow: 1; border: 1px dashed #00e5ff; padding: 10px; background: rgba(0, 229, 255, 0.05); overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; color: #ccc;">
-
             <div style="text-align: center; color: #888; margin-top: 50px;">AWAITING EQUATION...</div>
-
         </div>
-
     </div>
-
-
-
 </div>
 
 
@@ -2800,173 +2765,36 @@
 
 
 
-<div id="jessbot-toggle-btn" onclick="window.toggleNexusTerminal()">
-
-    <div class="chathead-orb">
-
-        <div class="gold-core"></div>
-
-        <div class="gold-ring ring-1"></div>
-
-        <div class="gold-ring ring-2"></div>
-
+<div id="comms-toggle-btn" class="cyber-orb-wrapper left-orb" onclick="window.toggleCommsSidebar()" style="display: none;">
+    <div class="cyber-orb green-theme">
+        <div class="orb-ring outer-ring"></div>
+        <div class="orb-ring middle-ring"></div>
+        <div class="orb-ring inner-ring"></div>
+        <div class="orb-core">
+            <span class="orb-icon blink">📡</span>
+        </div>
+        <div id="comms-ping" class="hidden orb-alert-ping"></div>
     </div>
+</div>
 
-    <div class="chathead-label">JESSBOT</div>
-
+<div id="jessbot-toggle-btn" class="cyber-orb-wrapper right-orb" onclick="window.toggleNexusTerminal()" style="display: none;">
+    <div class="cyber-orb gold-theme">
+        <div class="orb-ring outer-ring"></div>
+        <div class="orb-ring middle-ring"></div>
+        <div class="orb-ring inner-ring"></div>
+        <div class="orb-core">
+            <span class="orb-icon">⚙️</span>
+        </div>
+    </div>
 </div>
 
 
 
-<div id="jessbot-sidebar" class="tactical-sidebar right-side closed">
 
-    <div class="sidebar-scanline"></div>
 
-    
 
-    <div class="ts-header" style="border-color: #ffd700; flex-direction: row-reverse;">
 
-        <button class="ts-close-btn" style="color: #ffd700;" onclick="window.toggleNexusTerminal()">✖</button>
 
-        <div style="text-align: left;">
-
-            <h3 class="ts-title" style="color: #ffd700;"><span class="blink" style="color:#ffd700;">⚙️</span> JESSBOT</h3>
-
-            <p class="ts-sub" style="color: #aa8800;">TACTICAL OVERSEER V7</p>
-
-        </div>
-
-    </div>
-
-
-
-    <div id="ai-waveform" class="waveform-container hidden">
-
-        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-
-    </div>
-
-
-
-    <div id="nexus-chat-history" class="ts-content" style="display: flex; flex-direction: column; gap: 15px;">
-
-        <div class="data-block ai-block" style="border-color: #ffd700;">
-
-            <span class="block-label" style="color: #ffd700;">JESSBOT // SYSTEM</span>
-
-            Commander, I am operating on secure local channels. Select a tactical protocol below to analyze your data.
-
-        </div>
-
-    </div>
-
-
-
-    <div class="ai-command-grid">
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('analyze')">
-
-            <span class="cmd-icon">📊</span> MISSION ANALYSIS
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('status')">
-
-            <span class="cmd-icon">📡</span> SYSTEM TELEMETRY
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('weakness')">
-
-            <span class="cmd-icon">⚠️</span> VULNERABILITY SCAN
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('tip')">
-
-            <span class="cmd-icon">💡</span> COMBAT PROTOCOLS
-
-        </button>
-
-    </div>
-
-</div>
-
-
-
-<div id="jessbot-sidebar" class="tactical-sidebar right-side closed">
-
-    <div class="sidebar-scanline"></div>
-
-    
-
-    <div class="ts-header" style="border-color: #ffd700;">
-
-        <button class="ts-close-btn" style="color: #ffd700;" onclick="window.toggleNexusTerminal()">✖</button>
-
-        <div style="text-align: right;">
-
-            <h3 class="ts-title" style="color: #ffd700;">JESSBOT <span class="blink" style="color:#ffd700;">⚙️</span></h3>
-
-            <p class="ts-sub" style="color: #aa8800;">TACTICAL OVERSEER V7</p>
-
-        </div>
-
-    </div>
-
-
-
-    <div id="ai-waveform" class="waveform-container hidden">
-
-        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-
-    </div>
-
-
-
-    <div id="nexus-chat-history" class="ts-content" style="display: flex; flex-direction: column; gap: 15px;">
-
-        <div class="data-block ai-block">
-
-            <span class="block-label">JESSBOT // SYSTEM</span>
-
-            Commander, I am disconnected from the Cloud to ensure absolute security. I can analyze your combat data locally. Select a command protocol below.
-
-        </div>
-
-    </div>
-
-
-
-    <div class="ai-command-grid">
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('analyze')">
-
-            <span class="cmd-icon">📊</span> ANALYZE LATEST MISSION
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('status')">
-
-            <span class="cmd-icon">📡</span> OVERALL SYSTEM STATUS
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('weakness')">
-
-            <span class="cmd-icon">⚠️</span> IDENTIFY WEAKNESSES
-
-        </button>
-
-        <button class="ai-cmd-btn" onclick="window.executeJessBotCommand('tip')">
-
-            <span class="cmd-icon">💡</span> REQUEST COMBAT TIP
-
-        </button>
-
-    </div>
-
-</div>
 
 
 
