@@ -105,15 +105,27 @@ window.resumeClassSession = function() {
 
     if (data.role === 'teacher') {
         // --- RESUME TEACHER ---
-        window.myName = data.name; 
-        document.body.classList.add('dashboard-active'); 
-        
-        document.getElementById("start-modal").classList.add("hidden");
-        
-        const dash = document.getElementById("teacher-dashboard");
-        if(dash) dash.classList.remove("hidden");
-        
-        const roomCodeEl = document.getElementById("dash-room-code");
+       // --- RESUME TEACHER ---
+        window.myName = data.name; 
+        document.body.classList.add('dashboard-active'); 
+        
+        document.getElementById("start-modal").classList.add("hidden");
+        
+        // 🟢 IRONCLAD DASHBOARD RESUME
+        const dash = document.getElementById("teacher-dashboard");
+        if(dash) {
+            dash.classList.remove("hidden");
+            dash.style.display = 'flex'; 
+            dash.style.flexDirection = 'column';
+            dash.style.position = 'fixed';
+            dash.style.top = '0';
+            dash.style.left = '0';
+            dash.style.width = '100vw';
+            dash.style.height = '100vh';
+            dash.style.zIndex = '999999';
+        }
+        
+        const roomCodeEl = document.getElementById("dash-room-code");
         // Fix double "CLASS-" text if present
         if(roomCodeEl) roomCodeEl.innerText = data.room.replace("CLASS-", "");
         
@@ -481,20 +493,17 @@ if (auth) {
             const docSnap = await getDoc(docRef);
             
             if (docSnap.exists()) {
-                // 1. 🟢 I-ASSIGN MUNA ANG DATA BAGO I-CHECK! (Ito ang mag-fifix sa crash)
+                // 1. Assign Data
                 currentUser = docSnap.data();
                 currentUser.uid = user.uid;
                 myName = currentUser.username; 
                 
-                // 2. 🛠️ SELF-REPAIR & PROGRESSION PROTOCOL
+                // 2. Self-Repair Protocol
                 let needsUpdate = false;
                 let updates = {};
 
-                // Basic Stats
                 if (!currentUser.matchHistory) { currentUser.matchHistory = []; updates.matchHistory = []; needsUpdate = true; }
                 if (currentUser.coins === undefined) { currentUser.coins = 200; updates.coins = 200; needsUpdate = true; }
-                
-                // Inventory & Equipped Items
                 if (!currentUser.inventory) { 
                     updates.inventory = ['turret_def', 'enemy_def', 'boss_def', 'fx_blue']; 
                     currentUser.inventory = updates.inventory;
@@ -505,35 +514,24 @@ if (auth) {
                     currentUser.equipped = updates.equipped;
                     needsUpdate = true;
                 }
-                
-                // 🌌 NEW: CAMPAIGN MODE PROGRESSION (CHAPTER 1 TO 100)
                 if (!currentUser.campaignChapter) { 
                     currentUser.campaignChapter = 1; 
                     updates.campaignChapter = 1; 
                     needsUpdate = true; 
                 }
-                
-                // Social System Fixes
                 if (!currentUser.searchName) { currentUser.searchName = myName.toLowerCase(); updates.searchName = myName.toLowerCase(); needsUpdate = true; }
                 if (!currentUser.friends) { currentUser.friends = []; updates.friends = []; needsUpdate = true; }
                 if (!currentUser.friendRequests) { currentUser.friendRequests = []; updates.friendRequests = []; needsUpdate = true; }
 
-                // I-save ang mga missing fields sa Database
                 if (needsUpdate) {
                     await updateDoc(docRef, updates);
-                    console.log("✅ User Data Auto-Repaired & Campaign Initialized.");
                 }
 
-                // ====================================
                 // 3. UI UPDATES (MAIN DASHBOARD)
-                // ====================================
-                
-                // I-hide ang Login at Ipakita ang Profile
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('guest-option').classList.add('hidden');
                 document.getElementById('profile-section').classList.remove('hidden');
                 
-                // Update Rank & XP
                 let currentXP = currentUser.totalXP || 0;
                 const rankData = getRankInfo(currentXP);
                 
@@ -553,38 +551,38 @@ if (auth) {
                 const xpFill = document.getElementById('profile-xp-fill');
                 if (xpFill) xpFill.style.width = xpPercent + "%";
 
-                // Update Coins
                 const dashCoins = document.getElementById('dash-coins-display');
                 if (dashCoins) dashCoins.innerText = currentUser.coins || 0;
 
-                // Sync Shop Data & Greet Player
                 if (window.syncShopData) window.syncShopData(currentUser);
                 
-                // Load Avatar Profile
                 let currentAvatar = currentUser.avatar || 'https://img.icons8.com/color/96/000000/astronaut.png';
                 const avatarImg = document.getElementById("dash-avatar-img");
                 if (avatarImg) avatarImg.src = currentAvatar;
 
-                // Audio Greeting
                 if (window.Sound) window.Sound.speak("Welcome back, " + myName);
 
                 // ====================================
                 // 4. LIVE SYSTEMS INITIALIZATION
                 // ====================================
-                
-                // Init Comms & Friends System
                 if (window.initCommsListener) window.initCommsListener();
 
-                // Register Socket to Server for Multi/Calls
                 if (socket) {
                     socket.emit('register_player', { name: myName, uid: currentUser.uid });
                 }
+
+                // 🟢 THE FIX: Tawagin ang Orbs Controller para Ipakita sila sa Dashboard!
+                setTimeout(() => {
+                    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
+                }, 500); // 500ms delay para siguradong tapos na ang intro animations
             }
         } else {
-            // Kung nag-logout ang player o walang session, ibalik ang Login Menu
             document.getElementById('auth-section').classList.remove('hidden');
             document.getElementById('guest-option').classList.remove('hidden');
             document.getElementById('profile-section').classList.add('hidden');
+            
+            // 🟢 FORCE HIDE ORBS KAPAG NASA LOGIN SCREEN
+            if(window.updateOrbsVisibility) window.updateOrbsVisibility(true);
         }
     });
 }
@@ -1042,6 +1040,8 @@ window.skipStory = function() {
 
     // 3. I-play ang Menu Music
     if(window.Sound && window.Sound.playBGM) window.Sound.playBGM('menu');
+
+    window.updateOrbsVisibility();
     
     // 4. Silipin kung may active class
     if(window.restoreSession) window.restoreSession();
@@ -1339,29 +1339,48 @@ if(socket) {
         }
     });
     
-    // 6. PARTY MODE: XP SYNC (HOST SIDE)
-    // Host receives XP gain from Client -> Adds to total -> Broadcasts back
-    socket.on('client_xp_gain', (data) => {
-        if (state.gameMode === 'party' && isHost) {
-            state.xp += data.amount; // Add Client's contribution
-            checkLevelUp(); 
-            updateHUD();
-            
-            // 🚨 NEW: Broadcast updated Total XP back to everyone
-            socket.emit('host_sync_xp', { room: currentRoomId, xp: state.xp, maxXp: state.xpToNext });
-        }
-    });
+    // 6. PARTY MODE: XP & SCORE SYNC (HOST SIDE)
+    socket.on('client_xp_gain', (data) => {
+        if (state.gameMode === 'party' && isHost) {
+            state.xp += data.amount; 
+            state.score += data.amount; // 🟢 Add score locally to host
+            checkLevelUp(); 
+            updateHUD();
+            
+            // Broadcast back updated Total XP AND Score
+            socket.emit('host_sync_xp', { room: currentRoomId, xp: state.xp, maxXp: state.xpToNext, sharedScore: state.score });
+        }
+    });
 
-    // 7. PARTY MODE: XP SYNC (CLIENT SIDE)
-    // Client receives total XP from Host
-    socket.on('sync_xp_update', (data) => {
-        if (state.gameMode === 'party' && !isHost) {
-            state.xp = data.xp;
-            state.xpToNext = data.maxXp; 
-            updateHUD(); // Bar moves visually
-        }
-    });
+    // 7. PARTY MODE: XP & SCORE SYNC (CLIENT SIDE)
+    socket.on('sync_xp_update', (data) => {
+        if (state.gameMode === 'party' && !isHost) {
+            state.xp = data.xp;
+            state.xpToNext = data.maxXp; 
+            if (data.sharedScore !== undefined) state.score = data.sharedScore; // 🟢 Sync exact team score!
+            updateHUD(); 
+        }
+    });
 
+    // 4. PARTY MODE: SHOT VISUALS (Aayusin natin ang pinanggagalingan ng baril ng kakampi)
+    socket.on('sync_shot', (data) => {
+        if (state.isPlaying && state.gameMode === 'party') {
+            let tx = getTurretX(data.pIndex, data.totalP);
+            // 🟢 FIX: Itaas ng 220 pixels ang laser ng kakampi para sa baril manggaling!
+            state.lasers.push({ x1: tx, y1: window.canvas.height - 220, x2: data.tx, y2: data.ty, life: 1.0, isAlly: true });
+            
+            let idx = state.meteors.findIndex(m => m.id === data.targetId);
+            if(idx !== -1) {
+                let m = state.meteors[idx];
+                if(m.isSupply) createParticles(m.x, m.y, "gold", 40);
+                else if(m.isBoss) createParticles(m.x, m.y, "red", 50);
+                else createParticles(m.x, m.y, "#00e5ff", 20);
+                
+                m.hp--; 
+                if(m.hp <= 0) state.meteors.splice(idx, 1);
+            }
+        }
+    });
     // 8. SKILLS & EXTRAS
     socket.on('sync_skill', (data) => {
         if (state.gameMode === 'party' && state.isPlaying) {
@@ -1534,9 +1553,12 @@ window.openMissionConfig = function() {
 // --- NAVIGATION & ABORT LOGIC ---
 
 window.cancelMission = function() {
-    if(window.Sound) window.Sound.click();
-    document.getElementById("mission-config-modal").classList.add("hidden");
-    document.getElementById("start-modal").classList.remove("hidden");
+    if(window.Sound) window.Sound.click();
+    document.getElementById("mission-config-modal").classList.add("hidden");
+    document.getElementById("start-modal").classList.remove("hidden");
+    
+    // 🟢 Ipakita ulit ang Orbs kung galing sa game prep
+    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
 };
 
 window.goHome = function() {
@@ -1557,6 +1579,10 @@ window.goHome = function() {
 
     // Force Reload to clear all game states/canvas/memory
     location.reload(); 
+
+    // ... (sa pinakadulo ng window.goHome bago mag-reload)
+    if(window.updateOrbsVisibility) window.updateOrbsVisibility(true); // Tago bago mag-reload
+    location.reload(); 
 };
 
 window.cleanupGame = function() {
@@ -1569,9 +1595,13 @@ window.cleanupGame = function() {
         window.gameLoopId = null;
     }
     
+    // 🟢 THE FIX: Ipakita ulit ang DALAWANG orbs kapag tapos na ang laban o bumalik sa menu/lobby
     const nexusBtn = document.getElementById("jessbot-toggle-btn");
+    const commsBtn = document.getElementById("comms-toggle-btn");
     if (nexusBtn) nexusBtn.style.display = "flex";
-    console.log("🧹 Executing Deep System Cleanup (Preserving Session Data)...");
+    if (commsBtn) commsBtn.style.display = "flex"; 
+
+    console.log("🧹 Executing Deep System Cleanup...");
     
     // 1. Stop Game Loop & Logic
     state.isPlaying = false;
@@ -1593,16 +1623,7 @@ window.cleanupGame = function() {
         if (typeof dashboardUnsub !== 'undefined' && dashboardUnsub) { dashboardUnsub(); dashboardUnsub = null; }
     }
 
-    // 4. Reset Socket Listeners
-    if (socket) {
-        socket.off('sync_spawn');
-        socket.off('sync_shot');
-        socket.off('sync_level_update');
-        socket.off('client_xp_gain');
-        socket.off('sync_xp_update');
-        socket.off('sync_skill');
-        socket.off('party_sync_pos');
-    }
+   
     
     // 🟢 CRITICAL FIX: DO NOT CLEAR currentRoomId OR myDocId HERE!
     // Hayaan silang naka-save para makapagpadala pa rin ng data kay Teacher.
@@ -1933,18 +1954,40 @@ window.toggleCurtain = function(show, title = "LOADING...", sub = "PLEASE WAIT",
 };
 
 function enterLobbyUI(code) {
-    document.getElementById("mp-menu-modal").classList.add("hidden"); document.getElementById("lobby-modal").classList.remove("hidden");
-    document.getElementById("room-code-display").innerText = code;
-    let titleEl = document.getElementById("lobby-title-text");
-    if(titleEl) titleEl.innerText = state.gameMode === 'party' ? "TEAM LOBBY" : "VS LOBBY";
-    if(isHost) document.getElementById("host-start-btn").classList.remove("hidden"); else document.getElementById("client-wait-msg").classList.remove("hidden");
-    roomUnsub = onSnapshot(doc(db, "rooms", code), (snap) => {
-        if(!snap.exists()) return;
-        let data = snap.data(); totalPlayers = data.players.length; 
-        let list = document.getElementById("lobby-players"); 
-        if(list) { list.innerHTML=""; data.players.forEach(p => list.innerHTML += `<div class="lobby-player-row"><span>${p.name}</span></div>`); }
-        if(data.gameState === 'playing' && !state.isPlaying) startGameLogic();
-    });
+    // 🟢 BUG FIX 1: ITAAS ANG CURTAIN PARA MAKITA ANG LOBBY!
+    if (window.toggleCurtain) window.toggleCurtain(false);
+
+    document.getElementById("mp-menu-modal").classList.add("hidden"); 
+    document.getElementById("lobby-modal").classList.remove("hidden");
+    document.getElementById("room-code-display").innerText = code;
+    
+    let titleEl = document.getElementById("lobby-title-text");
+    if(titleEl) titleEl.innerText = state.gameMode === 'party' ? "TEAM LOBBY" : "VS LOBBY";
+    
+    if(isHost) {
+        document.getElementById("host-start-btn").classList.remove("hidden"); 
+        document.getElementById("client-wait-msg").classList.add("hidden");
+    } else {
+        document.getElementById("host-start-btn").classList.add("hidden");
+        document.getElementById("client-wait-msg").classList.remove("hidden");
+    }
+
+    roomUnsub = onSnapshot(doc(db, "rooms", code), (snap) => {
+        if(!snap.exists()) return;
+        let data = snap.data(); 
+        totalPlayers = data.players.length; 
+        
+        let list = document.getElementById("lobby-players"); 
+        if(list) { 
+            list.innerHTML=""; 
+            data.players.forEach(p => list.innerHTML += `<div class="lobby-player-row"><span>${p.name}</span></div>`); 
+        }
+        
+        // 🟢 PREVENT DOUBLE START BUG
+        if(data.gameState === 'playing' && !state.isPlaying) {
+            startGameLogic();
+        }
+    });
 }
 window.hostStartGame = async function() { if(totalPlayers < 2) { alert("Need 2 players!"); return; } await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'playing' }); };
 
@@ -1971,13 +2014,12 @@ function startGameLogic() {
         state.vsInterval = setInterval(() => {
             if(state.isPlaying && !state.isPaused && !state.matchConcluded) {
                 let simpleMeteors = state.meteors.map(m => ({ 
-                    id: m.id, x: m.x, y: m.y, q: m.question, hp: m.hp, 
-                    radius: m.radius, isGolden: m.isGolden, goldenLife: m.goldenLife,
-                    isSupply: m.isSupply, isBoss: m.isBoss, isSummoned: m.isSummoned 
+                    id: m.id, x: Math.round(m.x), y: Math.round(m.y), q: m.question, hp: m.hp, 
+                    radius: m.radius, isGolden: m.isGolden, isSupply: m.isSupply, isBoss: m.isBoss 
                 }));
 
                 let simpleLasers = state.lasers.map(l => ({ 
-                    x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, color: l.color 
+                    x1: Math.round(l.x1), y1: Math.round(l.y1), x2: Math.round(l.x2), y2: Math.round(l.y2), color: l.color 
                 }));
 
                 socket.emit('send_vs_state', { 
@@ -1990,7 +2032,7 @@ function startGameLogic() {
                     } 
                 });
             }
-        }, 100); // Perfect 10 ticks per second. Do not duplicate this anywhere else.
+        }, 100); // 10 FPS sync rate - Perfect for smooth rendering without lagging the server!
     }
 
     // B. PARTY MODE: HOST SYNC PULSE
@@ -2005,21 +2047,17 @@ function startGameLogic() {
     }
 }
 
-// ==========================================
-// 🚀 MISSION START (CORE GAMEPLAY LOOP)
-// ==========================================
 window.beginGameplay = function() {
-    // 🚨 1. VISUAL CLEANUP: NUKE ALL MENUS & DASHBOARDS
+    
     document.body.classList.remove('classroom-mode'); 
     document.body.classList.remove('dashboard-active'); 
-    document.body.classList.add('in-combat'); // 🟢 THE SHIELD
+    document.body.classList.add('in-combat'); 
     
-    // Itago ang lahat ng posibleng sumilip na UI sa background
     document.querySelectorAll('.modal, #teacher-dashboard, #start-modal, #class-selection-modal, #report-modal, #win-modal').forEach(el => {
         if(el) el.classList.add('hidden');
     });
 
-    // Piliting ilagay sa pinaka-harap ang laro
+    if(window.updateOrbsVisibility) window.updateOrbsVisibility(true);
     const gameWrapper = document.getElementById("game-wrapper");
     if(gameWrapper) {
         gameWrapper.classList.remove("hidden");
@@ -2027,7 +2065,9 @@ window.beginGameplay = function() {
         gameWrapper.style.zIndex = "10"; 
     }
 
-    // 🚨 2. ANTI-CHEAT: Hide Nexus Terminal during combat
+    // 🟢 BUG FIX 1: I-force update ang resolution bago gumawa ng elements!
+    window.fixGameResolution();
+
     const nexusBtn = document.getElementById("jessbot-toggle-btn");
     const commsBtn = document.getElementById("comms-toggle-btn");
     if (nexusBtn) nexusBtn.style.display = "none";
@@ -2630,23 +2670,28 @@ function applyRewards() {
     }
 
     // 3. Multiplayer/Classroom Sync Logic
-    if (state.gameMode === 'party') {
-        if (isHost) { 
-            state.xp += xpGain; 
-            checkLevelUp(); 
-            updateHUD();
-            if (socket) {
-                socket.emit('host_sync_xp', { room: currentRoomId, xp: state.xp, maxXp: state.xpToNext });
-            }
-        } 
-        else if (socket) { 
-            socket.emit('client_xp_gain', { room: currentRoomId, amount: xpGain }); 
-        }
-    } else {
-        // Solo Logic
-        state.xp += xpGain; 
-        checkLevelUp();
-    }
+    // 3. Multiplayer/Classroom Sync Logic
+    if (state.gameMode === 'party') {
+        if (isHost) { 
+            state.xp += xpGain; 
+            state.score += xpGain; // 🟢 FIX 3A: Host adds the score directly
+            checkLevelUp(); 
+            updateHUD();
+            if (socket) {
+                // Ipasa pati ang score para sabay lahat
+                socket.emit('host_sync_xp', { room: currentRoomId, xp: state.xp, maxXp: state.xpToNext, sharedScore: state.score });
+            }
+        } 
+        else if (socket) { 
+            // 🟢 FIX 3A: Client sends the command to the host to add score
+            socket.emit('client_xp_gain', { room: currentRoomId, amount: xpGain }); 
+        }
+    } else {
+        // Solo Logic
+        state.score += xpGain; 
+        state.xp += xpGain; 
+        checkLevelUp();
+    }
 }
 
 window.checkLevelUp = function() {
@@ -2726,17 +2771,12 @@ window.playOutroSequence = function(isWin) {
     }, 3000); // 3 Seconds Delay
 };
 
-// ==========================================
-// 💀 GAME OVER LOGIC (FIXED & CLEANED)
-// ==========================================
 window.gameOver = function() {
-    if (state.matchConcluded) return; // Prevent double firing
+    if (state.matchConcluded) return; 
     state.matchConcluded = true;
 
-    // 🟢 FIX: Tanggalin ang shield para lumabas ang Modals ng maayos!
     document.body.classList.remove('in-combat');
     
-    // 1. STOP ALL TIMERS & AUDIO
     if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
     if (state.gameTimer) clearInterval(state.gameTimer);
     if (window.Sound) window.Sound.stopBGM();
@@ -2744,75 +2784,75 @@ window.gameOver = function() {
     state.isPlaying = false; 
     if(window.inputField) window.inputField.blur();
 
-    // 2. VS MODE HANDLING (Special Case)
-    if (state.gameMode === 'vs') {
+    // =====================================
+    // ⚔️ VS MODE & PARTY MODE DEFEAT HANDLING
+    // =====================================
+    if (state.gameMode === 'vs' || state.gameMode === 'party') {
         if (socket && currentRoomId) {
             state.health = 0; 
-            socket.emit('player_died', { room: currentRoomId });
-            socket.emit('send_vs_state', { 
-                room: currentRoomId, 
-                state: { meteors: [], lasers: [], health: 0, score: state.score } 
-            });
+            if (state.gameMode === 'vs') {
+                socket.emit('player_died', { room: currentRoomId });
+                socket.emit('send_vs_state', { 
+                    room: currentRoomId, 
+                    state: { meteors: [], lasers: [], health: 0, score: state.score } 
+                });
+            }
         }
         
-        // Show VS Defeat Modal
         const winModal = document.getElementById("win-modal");
         if(winModal) {
             winModal.classList.remove("hidden");
             const title = winModal.querySelector("h1");
             const sub = winModal.querySelector(".subtitle");
             const content = winModal.querySelector(".modal-content");
-            if(title) { title.innerText = "DEFEAT"; title.style.color = "#ff0055"; }
-            if(sub) sub.innerText = "SYSTEM CRITICAL";
-            if(content) content.style.borderColor = "#ff0055";
             
-            // Hide Play Again for loser
+            if(title) { title.innerText = "DEFEAT"; title.style.color = "#ff0055"; title.style.textShadow = "0 0 20px #ff0055"; }
+            if(sub) sub.innerText = state.gameMode === 'party' ? "SQUAD WIPED OUT" : "SYSTEM CRITICAL";
+            if(content) { content.style.borderColor = "#ff0055"; content.style.boxShadow = "0 0 30px #ff0055"; }
+            
+            // 🟢 MULTIPLAYER FIX: Return to Lobby instead of Solo
             const playAgainBtn = winModal.querySelector(".secondary");
-            if(playAgainBtn) playAgainBtn.style.display = "none";
+            if(playAgainBtn) {
+                playAgainBtn.style.display = "block";
+                playAgainBtn.innerText = "RETURN TO LOBBY";
+                playAgainBtn.onclick = () => window.returnToLobby();
+            }
         }
-        return; // Stop here for VS Mode
+        return; 
     }
 
-    // 3. SHOW LANDSCAPE DASHBOARD (Solo / Classroom)
+    // =====================================
+    // 🚀 SOLO & CLASSROOM DEFEAT HANDLING
+    // =====================================
     const reportModal = document.getElementById("report-modal");
     if(reportModal) reportModal.classList.remove("hidden");
 
-    // Update Basic Stats on UI
     const scoreEl = document.getElementById("rep-score");
     if(scoreEl) scoreEl.innerText = state.score;
 
-    // 🟢 GENERATE TACTICAL LOGS
     if(window.renderTacticalLog) window.renderTacticalLog();
     if(window.generateMissionDebrief) window.generateMissionDebrief();
     if(window.generateTacticalReport) window.generateTacticalReport();
     if(window.saveMatchRecord) window.saveMatchRecord();
 
-    // 5. BUTTON VISIBILITY LOGIC (Classroom vs Solo)
-    // 🟢 FIX: LIGTAS NA BUTTON SELECTION (Anti-null crash)
     if (reportModal) {
         const aiBtn = reportModal.querySelector('button[onclick*="startAITraining"]');
         const retryBtn = reportModal.querySelector('button[onclick*="startSolo"]');
         const homeBtn = reportModal.querySelector('button[onclick*="goHome"]');
         
         if (state.gameMode === 'classroom') {
-            // --- CLASSROOM MODE: Student Locked ---
             if(aiBtn) aiBtn.style.display = 'none';
-            if(homeBtn) homeBtn.style.display = 'none'; // Maghintay kay teacher bago umalis!
-            
+            if(homeBtn) homeBtn.style.display = 'none'; 
             if(retryBtn) { 
                 retryBtn.innerText = "⏳ WAITING FOR TEACHER..."; 
                 retryBtn.onclick = null; 
                 retryBtn.style.opacity = "0.5"; 
                 retryBtn.style.cursor = "not-allowed";
-                retryBtn.style.display = "block";
                 retryBtn.disabled = true;
             }
-            
-            // 🟢 IPADALA ANG FINAL SCORE KAY TEACHER!
             if(typeof window.reportProgress === 'function') window.reportProgress(true);
 
         } else {
-            // --- SOLO MODE: Full Control ---
             if(aiBtn) aiBtn.style.display = 'block'; 
             if(retryBtn) { 
                 retryBtn.innerText = "🔄 RETRY MISSION"; 
@@ -2820,22 +2860,17 @@ window.gameOver = function() {
                     reportModal.classList.add("hidden"); 
                     window.startSolo(); 
                 }; 
-                retryBtn.style.opacity = "1"; 
-                retryBtn.style.display = "block";
-                retryBtn.style.cursor = "pointer";
                 retryBtn.disabled = false;
             }
         }
     }
 
-    // 6. GENERATE ANALYTICS BUTTON TEXT
     state.scoreSubmitted = false; 
     const uploadBtn = document.getElementById("real-submit-btn");
     if(uploadBtn) uploadBtn.innerText = "UPLOAD DATA TO HQ";
 
-    // 7. 🎬 TRIGGER CINEMATIC OUTRO
     if (window.playOutroSequence) {
-        window.playOutroSequence(false); // false = Defeat Animation
+        window.playOutroSequence(false); 
     }
 };
 
@@ -2880,43 +2915,88 @@ function gameVictory(reason) {
     winContent.style.borderColor = "#00ff41";
     winContent.style.boxShadow = "0 0 30px #00ff41";
 
-    // 🟢 BUTTON LOGIC: Hide in VS, make it CONTINUE for Campaign, PLAY AGAIN for Solo
+    // (Inside gameVictory function, palitan ang button logic block ng ganito:)
+    
+    // 🟢 MULTIPLAYER BUTTON FIX
     const playAgainBtn = winModal.querySelector(".secondary");
     
-    if (state.gameMode === 'vs') {
-        if(playAgainBtn) playAgainBtn.style.display = "none";
+    if (state.gameMode === 'vs' || state.gameMode === 'party') {
+        if(playAgainBtn) {
+            playAgainBtn.style.display = "block";
+            playAgainBtn.innerText = "RETURN TO LOBBY";
+            playAgainBtn.onclick = () => window.returnToLobby(); // Bumalik sa Lobby!
+        }
     } else if (state.gameMode === 'campaign') {
         if(playAgainBtn) {
             playAgainBtn.style.display = "block";
             playAgainBtn.innerText = "CONTINUE ❯";
-            playAgainBtn.onclick = () => window.proceedCampaignVictory(); // 🎁 Tatawagin ang Loot System
+            playAgainBtn.onclick = () => window.proceedCampaignVictory(); 
         }
     } else {
         if(playAgainBtn) {
             playAgainBtn.style.display = "block";
             playAgainBtn.innerText = "PLAY AGAIN";
-            playAgainBtn.onclick = () => window.startSolo(); // Normal retry
+            playAgainBtn.onclick = () => window.startSolo(); 
         }
     }
 
-    // Report Score to Server (Skip for Solo & Campaign)
-    if(socket && state.gameMode !== 'solo' && state.gameMode !== 'campaign') {
-        socket.emit('report_score', { score: state.score });
-    }
     
-    // Update User XP
-    if (typeof currentUser !== 'undefined' && currentUser) {
-        let xpGained = state.score + 100; // Bonus XP for Winning
-        let newTotal = (currentUser.totalXP || 0) + xpGained; 
-        currentUser.totalXP = newTotal;
-        
-        if(typeof db !== 'undefined' && typeof updateDoc === 'function') { 
-            updateDoc(doc(db, "users", currentUser.uid), { totalXP: newTotal })
-                .catch(err => console.error("XP Update Failed:", err)); 
-        }
-    }
 }
 
+// 🟢 NEW: Smoothly go back to Multiplayer Lobby without refreshing
+window.returnToLobby = async function() {
+    if(window.Sound) window.Sound.click();
+    document.getElementById("win-modal").classList.add("hidden");
+    document.getElementById("report-modal").classList.add("hidden");
+    window.cleanupGame();
+
+    // I-reset ang room state sa waiting kung ikaw ang Host
+    if (isHost && currentRoomId) {
+        await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'waiting' });
+    }
+    
+    // Ipakita ulit ang Lobby UI
+    if (currentRoomId) {
+        window.enterLobbyUI(currentRoomId);
+    } else {
+        window.goHome(); // Fallback kung nawala ang room ID
+    }
+};
+
+// 🟢 UPDATED: Proper Database Cleanup on Exit
+window.goHome = async function() {
+    if(window.Sound) window.Sound.click();
+    
+    if (state.isPlaying && !confirm("ABORT MISSION? Progress will be lost.")) {
+        return;
+    }
+
+    // Database Cleanup: Remove room if host leaves, or remove player from room
+    if (currentRoomId) {
+        try {
+            if (isHost && state.gameMode !== 'classroom') {
+                // Host deletes the room
+                await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'closed', status: 'archived' });
+            } else if (!isHost && state.gameMode !== 'classroom') {
+                // Client removes themselves from the player list
+                const roomRef = doc(db, "rooms", currentRoomId);
+                const roomSnap = await getDoc(roomRef);
+                if(roomSnap.exists()) {
+                    let players = roomSnap.data().players || [];
+                    players = players.filter(p => p.name !== myName);
+                    await updateDoc(roomRef, { players: players });
+                }
+            }
+        } catch(e) { console.log("Silent cleanup error"); }
+    }
+
+    if (sessionStorage.getItem('jess_session')) {
+        clearSession();
+    }
+
+    document.body.classList.remove('in-combat');
+    location.reload(); 
+};
 
 
 function createParticles(x, y, color, count) { 
@@ -3241,11 +3321,23 @@ function gameLoop(time) {
     if(state.gameMode === 'vs') {
         drawGame(window.ctx, state.meteors, 0, false); 
         drawTurretAt(window.canvas.width/4, window.canvas.height, "#00e5ff"); 
+        
+        // Firewall Divider
         if(window.drawFirewallBarrier) window.drawFirewallBarrier(window.ctx, window.canvas.width, window.canvas.height, time); 
         else { let mid = window.canvas.width / 2; window.ctx.beginPath(); window.ctx.moveTo(mid, 0); window.ctx.lineTo(mid, window.canvas.height); window.ctx.strokeStyle = "#00e5ff"; window.ctx.stroke(); }
         window.ctx.save(); window.ctx.fillStyle = "rgba(50, 0, 0, 0.2)"; window.ctx.fillRect(window.canvas.width/2, 0, window.canvas.width/2, window.canvas.height); window.ctx.restore();
+        
+        // Opponent Base Elements
         if(state.opponentState.meteors) drawGame(window.ctx, state.opponentState.meteors, window.canvas.width / 2, true); 
         drawTurretAt(window.canvas.width * 0.75, window.canvas.height, "#ff0055"); 
+        
+        // 🟢 BUG FIX 2: I-draw ang LASERS ng kalaban sa right side!
+        if(state.opponentState.lasers) {
+            state.opponentState.lasers.forEach(l => {
+                window.ctx.lineWidth = 6; window.ctx.strokeStyle = l.color || "#ff0055"; 
+                window.ctx.beginPath(); window.ctx.moveTo(l.x1 + window.canvas.width/2, l.y1); window.ctx.lineTo(l.x2 + window.canvas.width/2, l.y2); window.ctx.stroke();
+            });
+        }
     } else if(state.gameMode === 'party') {
         drawGame(window.ctx, state.meteors, 0, false); 
         for(let i=0; i<totalPlayers; i++) drawTurretAt(getTurretX(i, totalPlayers), window.canvas.height, i===myPlayerIndex?"#00e5ff":"cyan"); 
@@ -3885,9 +3977,10 @@ window.adminFreezeAll = async function() {
         await updateDoc(doc(db, "rooms", currentRoomId), { status: 'frozen' });
     }
 };
-
+window.lastRoomStatus = 'waiting';
 window.monitorClassroom = function(code) {
     console.log("Initializing Command Center for:", code);
+    window.agentTelemetry = {};
 
     // Listen to the ROOM status
     onSnapshot(doc(db, "rooms", code), (roomSnap) => {
@@ -3906,94 +3999,104 @@ window.monitorClassroom = function(code) {
         const freezeBtn = document.getElementById('btn-freeze-toggle');
         const statusEl = document.getElementById('dash-status');
 
-        // --- 1. WAITING (Lobby) ---
-        if (roomData.status === 'waiting') {
-            rosterView.classList.remove('hidden');
-            podiumView.classList.add('hidden');
-            tabs.style.display = 'none';
-            
-            // Start Button: Enabled
-            startBtn.innerText = "▶ START ROUND 1";
-            startBtn.disabled = false;
-            startBtn.style.opacity = "1";
-            startBtn.classList.remove('hidden');
-            startBtn.onclick = window.adminStartRound;
-            
-            freezeBtn.classList.add('hidden'); 
-            stopBtn.classList.add('hidden');   
-            
-            if(statusEl) statusEl.innerText = "STATUS: STANDBY";
-        } 
-        
-        // --- 2. PLAYING (Game Active) ---
-        else if (roomData.status === 'playing') {
-            rosterView.classList.add('hidden');
-            podiumView.classList.remove('hidden');
-            tabs.style.display = 'flex';
-            awardingModal.classList.add('hidden');
+        // 🟢 GLOBAL TRACKER: Para alam ng system kung galing tayo sa pause o lobby
+        if (typeof window.lastRoomStatus === 'undefined') window.lastRoomStatus = 'waiting';
 
-            // Start Button: Disabled (Playing info)
-            startBtn.classList.remove('hidden');
-            startBtn.innerText = `⏳ ROUND ${roomData.currentRound} / ${roomData.maxRounds}`;
-            startBtn.disabled = true; 
-            startBtn.style.opacity = "0.5";
-            startBtn.classList.remove('pulse-btn');
+        // --- 1. WAITING (Lobby) ---
+        if (roomData.status === 'waiting') {
+            // 🟢 TANGGALIN ANG EPAL: Gamitin ang switchDashTab para malinis ang screen!
+            window.switchDashTab('roster'); 
+            tabs.style.display = 'none';
+            
+            // Start Button: Enabled
+            startBtn.innerText = "▶ START ROUND 1";
+            startBtn.disabled = false;
+            startBtn.style.opacity = "1";
+            startBtn.classList.remove('hidden');
+            startBtn.onclick = window.adminStartRound;
+            
+            freezeBtn.classList.add('hidden'); 
+            stopBtn.classList.add('hidden');   
+            
+            if(statusEl) statusEl.innerText = "STATUS: STANDBY";
+            window.lastRoomStatus = 'waiting';
+        } 
+        
+        // --- 2. PLAYING (Game Active) ---
+        else if (roomData.status === 'playing') {
+            if(tabs) tabs.style.display = 'flex';
+            if(awardingModal) awardingModal.classList.add('hidden');
 
-            // Freeze Button: Active & Blue
-            freezeBtn.classList.remove('hidden');
-            freezeBtn.innerText = "❄️ FREEZE";
-            freezeBtn.className = "btn secondary"; 
-            
-            // Stop Button: STOP ROUND
-            stopBtn.classList.remove('hidden');
-            stopBtn.innerText = "⏹ STOP ROUND";
-            stopBtn.className = "btn danger";
-            stopBtn.onclick = window.adminForceStop;
-            
-            if(statusEl) statusEl.innerText = "STATUS: LIVE COMBAT";
-        }
-        
-        // --- 3. FROZEN (Paused) ---
-        else if (roomData.status === 'frozen') {
-            freezeBtn.innerText = "▶ RESUME";
-            freezeBtn.className = "btn primary"; 
-            if(statusEl) statusEl.innerText = "STATUS: PAUSED";
-        }
-        
-        // --- 4. ROUND ENDED (Intermission) ---
-        else if (roomData.status === 'round_ended') {
-            const nextRound = (parseInt(roomData.currentRound) || 0) + 1;
-            
-            // Start Button: Active again
-            startBtn.classList.remove('hidden');
-            startBtn.disabled = false;
-            startBtn.style.opacity = "1";
-            startBtn.classList.remove('pulse-btn');
-            
-            // Freeze: Hidden
-            freezeBtn.classList.add('hidden');
+            // 🟢 Tiyakin na ito ay nandidito para lumipat lang sa Podium pag galing sa waiting
+            if (window.lastRoomStatus === 'waiting' || window.lastRoomStatus === 'round_ended') {
+                window.switchDashTab('podium');
+                
+                document.querySelectorAll('.dash-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                const podiumBtn = document.querySelector(".dash-tabs .tab-btn:nth-child(3)"); 
+                if(podiumBtn) podiumBtn.classList.add('active');
+            }
 
-            // Stop Button: Becomes End Class
-            stopBtn.classList.remove('hidden');
-            stopBtn.innerText = "❌ END CLASS";
-            stopBtn.className = "btn danger";
-            stopBtn.onclick = window.adminForceStop;
+            // Start Button: Disabled (Playing info)
+            startBtn.classList.remove('hidden');
+            startBtn.innerText = `⏳ ROUND ${roomData.currentRound} / ${roomData.maxRounds}`;
+            startBtn.disabled = true; 
+            startBtn.style.opacity = "0.5";
+            startBtn.classList.remove('pulse-btn');
 
-            // Trigger Timer ONCE (kung hindi pa nag-aauto start)
-            if (!isAutoStarting && typeof intermissionSeconds !== 'undefined') {
-                 // Reset timer variable just in case
-                 if(intermissionSeconds <= 0) intermissionSeconds = 10;
-                 window.startIntermissionCountdown(nextRound);
-            }
-            
-            if(statusEl) statusEl.innerText = "STATUS: INTERMISSION";
-        }
-        
-        // --- 5. FINISHED (Game Over) ---
-        else if (roomData.status === 'finished') {
-             awardingModal.classList.remove('hidden');
-             if(window.generateClassDiagnostics) window.generateClassDiagnostics();
-        }
+            // Freeze Button: Active & Blue
+            freezeBtn.classList.remove('hidden');
+            freezeBtn.innerText = "❄️ FREEZE";
+            freezeBtn.className = "btn secondary"; 
+            
+            // Stop Button: STOP ROUND
+            stopBtn.classList.remove('hidden');
+            stopBtn.innerText = "⏹ STOP ROUND";
+            stopBtn.className = "btn danger";
+            stopBtn.onclick = window.adminForceStop;
+            
+            if(statusEl) statusEl.innerText = "STATUS: LIVE COMBAT";
+            window.lastRoomStatus = 'playing';
+        }
+        
+        // --- 3. FROZEN (Paused) ---
+        else if (roomData.status === 'frozen') {
+            freezeBtn.innerText = "▶ RESUME";
+            freezeBtn.className = "btn primary"; 
+            if(statusEl) statusEl.innerText = "STATUS: PAUSED";
+            window.lastRoomStatus = 'frozen';
+        }
+        
+        // --- 4. ROUND ENDED (Intermission) ---
+        else if (roomData.status === 'round_ended') {
+            const nextRound = (parseInt(roomData.currentRound) || 0) + 1;
+            
+            startBtn.classList.remove('hidden');
+            startBtn.disabled = false;
+            startBtn.style.opacity = "1";
+            startBtn.classList.remove('pulse-btn');
+            
+            freezeBtn.classList.add('hidden');
+
+            stopBtn.classList.remove('hidden');
+            stopBtn.innerText = "❌ END CLASS";
+            stopBtn.className = "btn danger";
+            stopBtn.onclick = window.adminForceStop;
+
+            if (!isAutoStarting && typeof intermissionSeconds !== 'undefined') {
+                 if(intermissionSeconds <= 0) intermissionSeconds = 10;
+                 window.startIntermissionCountdown(nextRound);
+            }
+            
+            if(statusEl) statusEl.innerText = "STATUS: INTERMISSION";
+            window.lastRoomStatus = 'round_ended';
+        }
+        
+        // --- 5. FINISHED (Game Over) ---
+        else if (roomData.status === 'finished') {
+             awardingModal.classList.remove('hidden');
+             if(window.generateClassDiagnostics) window.generateClassDiagnostics();
+             window.lastRoomStatus = 'finished';
+        }
     });
 
     // Student List Logic (Keep this)
@@ -4687,30 +4790,37 @@ window.adminForceStop = async function() {
 // ==========================================
 // 📡 LIVE TELEMETRY SENDER (BULLETPROOF)
 // ==========================================
-window.reportProgress = async function(isFinal = false) {
+
     // Failsafe check
-    if (state.gameMode !== 'classroom' || !currentRoomId) {
-        console.warn("Telemetry Aborted: Not in Classroom Mode or Room ID missing.");
-        return;
-    }
+    // 🟢 OPTIMIZED TELEMETRY SENDER (Saves Firebase Quota!)
+window.lastSentData = { score: -1, acc: -1 };
+
+window.reportProgress = async function(isFinal = false) {
+    if (state.gameMode !== 'classroom' || !currentRoomId) return;
     
-    // Kunin ang pinaka-accurate na ID ng estudyante
     let targetId = window.myDocId || myDocId || (currentUser ? currentUser.uid : myName);
     if (!targetId) return;
+
+    let history = state.gameHistory || [];
+    let correctCount = history.filter(h => h && h.status === 'correct').length;
+    let totalAttempts = history.length;
+    let accuracy = totalAttempts > 0 ? Math.round((correctCount / totalAttempts) * 100) : 100;
+    if (totalAttempts === 0 && state.score > 0) accuracy = 100;
+
+    // 🛡️ ANTI-SPAM FILTER: Wag mag-send kung pareho lang ang data, MALIBAN na lang kung final call na.
+    if (!isFinal && window.lastSentData.score === state.score && window.lastSentData.acc === accuracy) {
+        return; // Skip sending to database!
+    }
+
+    // Update Memory
+    window.lastSentData.score = state.score;
+    window.lastSentData.acc = accuracy;
 
     try {
         const studentRef = doc(db, "rooms", currentRoomId, "students", targetId);
         
-        // Safe Computation ng Accuracy
-        let history = state.gameHistory || [];
-        let correctCount = history.filter(h => h && h.status === 'correct').length;
-        let totalAttempts = history.length;
-        let accuracy = totalAttempts > 0 ? Math.round((correctCount / totalAttempts) * 100) : 100;
-        
-        // Safe Computation ng Weakness
         let errorCounts = { '+': 0, '-': 0, 'x': 0, '÷': 0, 'Alg': 0 };
         let mistakesList = state.mistakes || [];
-        
         mistakesList.forEach(m => { 
             if (!m || !m.q) return; 
             let qStr = m.q.toString();
@@ -4724,14 +4834,13 @@ window.reportProgress = async function(isFinal = false) {
         let weakness = Object.keys(errorCounts).reduce((a, b) => errorCounts[a] > errorCounts[b] ? a : b);
         if (errorCounts[weakness] === 0) weakness = "None";
 
-        // 🟢 Ipadala kay Teacher
         await setDoc(studentRef, { 
             uid: targetId, 
             name: myName || "Agent", 
             currentScore: state.score || 0,
             totalScore: state.score || 0, 
             accuracy: accuracy,
-            combo: state.combo || 0, // Idinagdag para sa UI ni teacher
+            combo: state.combo || 0, 
             roundsPlayed: state.roundsPlayed || 1,
             status: isFinal ? 'finished' : 'playing', 
             inputLocked: state.inputLocked || false,
@@ -4741,33 +4850,51 @@ window.reportProgress = async function(isFinal = false) {
             weakestLink: weakness
         }, { merge: true });
         
-        console.log(`📡 Beamed Data to Teacher -> Score: ${state.score}, Acc: ${accuracy}%`);
+        console.log(`📡 Beamed Data -> Score: ${state.score}, Acc: ${accuracy}%`);
     } catch(e) { 
         console.error("❌ Telemetry Sync Error:", e); 
     } 
 };
 
-// 7. UTILS
+
+// ==========================================
+// 🎛️ DASHBOARD TAB CONTROLLER (IRONCLAD FIX)
+// ==========================================
 window.switchDashTab = function(tabName, event) {
     if(window.Sound) window.Sound.click();
     
-    // Hide all views
-    document.querySelectorAll('.dash-view').forEach(d => d.classList.add('hidden'));
+    // 1. Patayin sa display lahat ng views
+    document.querySelectorAll('.dash-view').forEach(d => {
+        d.classList.add('hidden');
+        d.style.display = 'none'; 
+    });
     
-    // Remove active state from all buttons
+    // 2. Tanggalin highlight sa lahat ng buttons
     document.querySelectorAll('.dash-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     
-    // Show selected view
-    document.getElementById(`view-${tabName}`).classList.remove('hidden');
+    // 3. FORCE SHOW & STRETCH ANG PINILING TAB
+    const selectedView = document.getElementById(`view-${tabName}`);
+    if (selectedView) {
+        selectedView.classList.remove('hidden');
+        
+        // 🟢 IRONCLAD UI DIRECTIVE: Piliting sakupin ang buong space!
+        selectedView.style.display = 'flex'; 
+        selectedView.style.flexDirection = 'column'; // Pababang pwesto
+        selectedView.style.flexGrow = '1';           // Banat hanggang sahig
+        selectedView.style.height = '100%';          // Sakupin ang 100% height
+        selectedView.style.width = '100%';
+        selectedView.style.overflow = 'hidden';      // Bawal mag-scroll ang main frame
+    }
     
-    // Add active state to clicked button
     if(event && event.target) {
         event.target.classList.add('active');
     }
 
-    // Trigger updates if needed based on tab
+    // 4. I-Render ang data ng TAB
     if(tabName === 'grid' && window.updateSpyView) window.updateSpyView();
     if(tabName === 'roster' && window.updateRosterView) window.updateRosterView();
+    if(tabName === 'podium' && window.updatePodiumView) window.updatePodiumView();
+    if(tabName === 'reports' && window.updateReportView) window.updateReportView();
 };
 
 window.exportToCSV = function() {
@@ -5409,6 +5536,7 @@ window.closeClassroomSetup = function() {
 
 window.createClassroom = async function() {
     console.log("Initializing Class Creation...");
+    window.agentTelemetry = {};
 
     if(!window.validateName()) {
         console.warn("Name validation failed.");
@@ -5469,10 +5597,19 @@ window.createClassroom = async function() {
         if(commsBtn) commsBtn.style.display = "none";
         
         // 3. Force Show Dashboard
+        // 3. Force Show Dashboard (IRONCLAD OVERRIDE)
         const dash = document.getElementById('teacher-dashboard');
         if (dash) {
             dash.classList.remove('hidden');
-            dash.style.display = 'flex'; // Override any display:none
+            dash.style.display = 'flex'; 
+            dash.style.flexDirection = 'column';
+            dash.style.position = 'fixed';
+            dash.style.top = '0';
+            dash.style.left = '0';
+            dash.style.width = '100vw';
+            dash.style.height = '100vh';
+            dash.style.zIndex = '999999';
+            dash.style.background = '#05070a';
         }
 
 
@@ -6261,6 +6398,7 @@ window.renderTacticalLog = function() {
                 <div id="${uniqueId}" class="hidden" style="margin-top:15px; padding:15px; background:rgba(255, 255, 255, 0.05); border-left:2px solid ${color}; color:#ddd; font-size:14px; font-family:'Courier New'; white-space: pre-wrap;">${explanation}</div>
             </div>`;
         logContainer.innerHTML += html;
+        
     });
 };
 
@@ -8423,8 +8561,13 @@ window.saveAndExitClass = function() {
 
     setTimeout(() => {
         if(confirm("Report Downloaded. Close Command Center?")) {
-            updateDoc(doc(db, "rooms", currentRoomId), { status: 'archived' });
-            location.reload(); 
+            // 🟢 BUG FIX: Gumamit ng .then() para hintayin ma-save sa DB bago mag-reload
+            updateDoc(doc(db, "rooms", currentRoomId), { status: 'archived' }).then(() => {
+                location.reload(); 
+            }).catch(e => {
+                console.error("Failed to close room:", e);
+                location.reload(); // Reload pa rin as fallback
+            });
         }
     }, 1000);
 };
@@ -8561,7 +8704,10 @@ let isComparing = false;
 window.toggleCommsSidebar = function() {
     if(window.Sound) window.Sound.click();
     const sidebar = document.getElementById("comms-sidebar");
-    sidebar.classList.toggle("closed");
+    if(sidebar) sidebar.classList.toggle("closed");
+    
+    // 🟢 INSTANT HIDE/SHOW ANG ORB!
+    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
 };
 
 window.switchCommsTab = function(tabName, event) {
@@ -10436,7 +10582,6 @@ window.toggleNexusTerminal = function() {
     if(window.Sound) window.Sound.playTone(1000, 'sine', 0.05);
     const sidebar = document.getElementById("jessbot-sidebar");
     
-    // 🟢 FIX: Siguraduhin na ang 'sidebar' ay nahanap bago mag-manipulate ng classList
     if (!sidebar) {
         console.error("JESSBOT SIDEBAR NOT FOUND!");
         return;
@@ -10448,6 +10593,9 @@ window.toggleNexusTerminal = function() {
     if (isClosed) {
         window.appendNexusMessage('ai', `Commander ${currentUser ? currentUser.username : ''}, I am tactical advisor V7. Select an operation for analysis.`);
     }
+
+    // 🟢 INSTANT HIDE/SHOW ANG ORB!
+    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
 };
 
 
@@ -10471,10 +10619,17 @@ window.appendNexusMessage = function(sender, text) {
 
 
 
+
+
+// 🟢 THE FIX: Anti-Spam Locking Mechanism
+window.isJessBotTyping = false;
+
 window.executeJessBotCommand = async function(commandType) {
+    if (window.isJessBotTyping) return; // 🛡️ I-block kung nagsasalita pa si Jessbot!
     if(window.Sound) window.Sound.click();
     
-    // 1. Ipakita ang in-click ng user sa screen
+    window.isJessBotTyping = true; // 🔒 I-lock ang system
+
     let userText = "";
     if (commandType === 'analyze') userText = "Analyze my latest mission data.";
     if (commandType === 'status') userText = "Provide overall system status.";
@@ -10483,19 +10638,15 @@ window.executeJessBotCommand = async function(commandType) {
     
     window.appendNexusMessage('user', userText);
 
-    // 2. Ipakita ang "Thinking Waveform"
     const historyBox = document.getElementById("nexus-chat-history");
     const waveform = document.getElementById("ai-waveform");
     if(waveform) waveform.classList.remove("hidden");
     historyBox.scrollTop = historyBox.scrollHeight;
 
-    // 3. Fake Processing Delay (Baiting the panelist)
-    // Maghihintay ng 1.5 seconds bago sumagot para mukhang "nag-iisip"
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Fake processing
 
     let finalResponse = "";
 
-    // --- AI LOGIC BRANCHES --- //
     if (!currentUser) {
         finalResponse = "⚠️ ERROR: No Agent profile detected. Please login to access analytics.";
     } 
@@ -10525,22 +10676,37 @@ window.executeJessBotCommand = async function(commandType) {
                 break;
 
             case 'status':
-                let totalMissions = history.length;
-                let totalScore = history.reduce((sum, match) => sum + match.score, 0);
-                let avgAcc = totalMissions > 0 ? Math.round(history.reduce((sum, match) => sum + match.accuracy, 0) / totalMissions) : 0;
-                let rank = getRankInfo(currentUser.totalXP || 0).title;
-                let accColorStatus = avgAcc >= 80 ? "highlight-green" : (avgAcc >= 50 ? "highlight-gold" : "highlight-red");
+                // 🌟 AAA IMPROVEMENT: LIVE COMBAT STATUS!
+                if (state.isPlaying) {
+                    let hpColor = state.health > 50 ? "highlight-green" : "highlight-red";
+                    finalResponse = `
+                        <span style="color:#ff0055;" class="blink">🔴 LIVE COMBAT DETECTED</span><br><br>
+                        <div class="ai-readout">
+                            <b>THREAT LEVEL:</b> LVL ${state.level}<br>
+                            <b>HULL INTEGRITY:</b> <span class="${hpColor}">${state.health}%</span><br>
+                            <b>CURRENT SCORE:</b> ${state.score}<br>
+                            <b>ACTIVE COMBO:</b> x${state.combo}
+                        </div>
+                        <br>Stay focused, Commander. Do not let the Nullifiers breach the line!
+                    `;
+                } else {
+                    let totalMissions = history.length;
+                    let totalScore = history.reduce((sum, match) => sum + match.score, 0);
+                    let avgAcc = totalMissions > 0 ? Math.round(history.reduce((sum, match) => sum + match.accuracy, 0) / totalMissions) : 0;
+                    let rank = getRankInfo(currentUser.totalXP || 0).title;
+                    let accColorStatus = avgAcc >= 80 ? "highlight-green" : (avgAcc >= 50 ? "highlight-gold" : "highlight-red");
 
-                finalResponse = `
-                    Compiling global telemetry...
-                    <div class="ai-readout">
-                        <b>AGENT:</b> ${currentUser.username}<br>
-                        <b>CURRENT RANK:</b> <span class="highlight-gold">${rank}</span><br>
-                        <b>TOTAL MISSIONS:</b> ${totalMissions}<br>
-                        <b>LIFETIME EFFICIENCY:</b> <span class="${accColorStatus}">${avgAcc}%</span><br>
-                        <b>TOTAL CREDITS:</b> ${state.coins} 🪙
-                    </div>
-                `;
+                    finalResponse = `
+                        Compiling global telemetry...
+                        <div class="ai-readout">
+                            <b>AGENT:</b> ${currentUser.username}<br>
+                            <b>CURRENT RANK:</b> <span class="highlight-gold">${rank}</span><br>
+                            <b>TOTAL MISSIONS:</b> ${totalMissions}<br>
+                            <b>LIFETIME EFFICIENCY:</b> <span class="${accColorStatus}">${avgAcc}%</span><br>
+                            <b>TOTAL CREDITS:</b> ${state.coins} 🪙
+                        </div>
+                    `;
+                }
                 break;
 
             case 'weakness':
@@ -10586,12 +10752,10 @@ window.executeJessBotCommand = async function(commandType) {
         }
     }
 
-    // 4. Hide Waveform & Trigger Typewriter Output
     if(waveform) waveform.classList.add("hidden");
     window.typewriteNexusMessage(finalResponse);
 };
 
-// 🟢 NEW TYPEWRITER (Enhanced Formatting)
 window.typewriteNexusMessage = function(htmlContent) {
     const history = document.getElementById("nexus-chat-history");
     if(!history) return;
@@ -10611,7 +10775,7 @@ window.typewriteNexusMessage = function(htmlContent) {
         if (i < htmlContent.length) {
             let char = htmlContent.charAt(i);
             currentHTML += char;
-            textSpan.innerHTML = currentHTML + "<span class='type-cursor'></span>"; // Solid block cursor
+            textSpan.innerHTML = currentHTML + "<span class='type-cursor'></span>"; 
             
             if (char === '<') isTag = true;
             if (char === '>') isTag = false;
@@ -10621,15 +10785,15 @@ window.typewriteNexusMessage = function(htmlContent) {
                 window.Sound.playTone(Math.random() * 200 + 1000, 'sine', 0.01);
             }
             history.scrollTop = history.scrollHeight;
-            setTimeout(typeChar, isTag ? 0 : 5); // Mas mabilis na type para astig tignan
+            setTimeout(typeChar, isTag ? 0 : 5); 
         } else {
-            textSpan.innerHTML = currentHTML; // Alisin cursor pag tapos na
+            textSpan.innerHTML = currentHTML; 
             if(window.Sound) window.Sound.playTone(1500, 'square', 0.1); 
+            window.isJessBotTyping = false; // 🔓 I-unlock na ulit para makapag-click
         }
     }
     typeChar();
 };
-
 
 
 
@@ -11262,3 +11426,76 @@ window.closeClassEntirely = function() {
         window.goHome(); // Clear session and reload smoothly
     });
 };
+
+// ==========================================
+// 🔮 HOLOGRAPHIC ORBS VISIBILITY MANAGER (AUTO-RADAR V2)
+// ==========================================
+window.updateOrbsVisibility = function(forceHide = false) {
+    const commsBtn = document.getElementById("comms-toggle-btn");
+    const jessBtn = document.getElementById("jessbot-toggle-btn");
+    if (!commsBtn || !jessBtn) return;
+
+    // 1. INSTANT HIDE OVERRIDE (For Combat)
+    if (forceHide) {
+        commsBtn.style.display = "none";
+        jessBtn.style.display = "none";
+        return;
+    }
+
+    // 2. COMBAT & TEACHER CHECK (Bawal umepal sa laro)
+    if (state.isPlaying || 
+        document.body.classList.contains('in-combat') || 
+        document.body.classList.contains('dashboard-active')) {
+        commsBtn.style.display = "none";
+        jessBtn.style.display = "none";
+        return;
+    }
+
+    // 3. STORY & INTRO CHECK (Bawal umepal sa cutscenes)
+    const bootOverlay = document.getElementById('boot-overlay');
+    const introOverlay = document.getElementById('cinematic-intro');
+    const storyOverlay = document.getElementById('story-overlay');
+    
+    if ((bootOverlay && bootOverlay.style.display !== 'none') || 
+        (introOverlay && introOverlay.style.display !== 'none') || 
+        (storyOverlay && !storyOverlay.classList.contains('hidden'))) {
+        commsBtn.style.display = "none";
+        jessBtn.style.display = "none";
+        return;
+    }
+
+    // 4. LOGIN SCREEN CHECK (Bawal umepal kung di pa nakapasok)
+    const profileSection = document.getElementById('profile-section');
+    const isGuestMode = document.getElementById('my-name'); 
+    
+    if (profileSection && profileSection.classList.contains('hidden') && !isGuestMode) {
+        commsBtn.style.display = "none";
+        jessBtn.style.display = "none";
+        return;
+    }
+
+    // 🟢 5. NEW: SIDEBAR COLLISION CHECK (Ang mag-aayos ng overlap!)
+    const commsSidebar = document.getElementById("comms-sidebar");
+    const jessSidebar = document.getElementById("jessbot-sidebar");
+
+    // Kung HINDI closed ang Comms Sidebar, itago ang Comms Orb
+    if (commsSidebar && !commsSidebar.classList.contains("closed")) {
+        commsBtn.style.display = "none";
+    } else {
+        commsBtn.style.display = "flex";
+    }
+
+    // Kung HINDI closed ang JessBot Sidebar, itago ang Jessbot Orb
+    if (jessSidebar && !jessSidebar.classList.contains("closed")) {
+        jessBtn.style.display = "none";
+    } else {
+        jessBtn.style.display = "flex";
+    }
+};
+
+// 🛡️ THE AUTO-WATCHER
+if (!window.orbWatcher) {
+    window.orbWatcher = setInterval(() => {
+        window.updateOrbsVisibility();
+    }, 1000); 
+}
