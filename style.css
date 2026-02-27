@@ -14395,3 +14395,349 @@ body.dashboard-active #teacher-dashboard:not(.hidden) {
 #reports-table-container th { position: sticky; top: 0; background: #0a0f1a; z-index: 100; border-bottom: 3px solid #00e5ff; padding: 20px 10px; color: #00e5ff; font-family: 'Orbitron'; font-size: 13px; }
 #reports-table-container td { padding: 22px 10px; border-bottom: 1px solid rgba(0,229,255,0.1); }
 .center-text { text-align: center !important; }
+
+/* =========================================
+   🌌 GOD-LEVEL STORY & BRIEFING CINEMATICS
+   ========================================= */
+
+/* 1. The Holographic Backdrop */
+#story-overlay {
+    background: radial-gradient(circle at center, rgba(0, 15, 30, 0.85) 0%, rgba(0, 2, 5, 0.98) 100%) !important;
+    backdrop-filter: blur(15px) !important; /* Blurs the game behind it */
+    z-index: 9999999 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    animation: hologram-fade-in 0.8s ease-out;
+}
+
+/* 2. The Main Comm Panel (Edgy Sci-Fi Look) */
+.comm-panel {
+    background: linear-gradient(135deg, rgba(0, 25, 50, 0.6) 0%, rgba(0, 0, 10, 0.9) 100%) !important;
+    border: 1px solid rgba(0, 229, 255, 0.3) !important;
+    box-shadow: 0 0 50px rgba(0, 229, 255, 0.1), inset 0 0 30px rgba(0, 229, 255, 0.05) !important;
+    max-width: 900px !important;
+    width: 90% !important;
+    border-radius: 4px !important;
+    clip-path: polygon(0 15px, 15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px)) !important;
+    position: relative;
+    overflow: visible !important;
+    padding: 2px !important; /* Frame border trick */
+}
+
+/* HUD Targeting Corners */
+.comm-panel::before, .comm-panel::after {
+    content: ''; position: absolute; width: 40px; height: 40px;
+    border: 3px solid #00e5ff; pointer-events: none; z-index: 10;
+}
+.comm-panel::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+.comm-panel::after { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* 3. Header Styling */
+.comm-header {
+    background: rgba(0, 229, 255, 0.15) !important;
+    border-bottom: 2px solid #00e5ff !important;
+    padding: 15px 30px !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-size: 16px !important;
+    color: #fff !important;
+    letter-spacing: 4px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    text-shadow: 0 0 10px #00e5ff !important;
+}
+
+/* 4. Content Area & Typography */
+.comm-content {
+    display: grid !important;
+    grid-template-columns: 200px 1fr !important;
+    gap: 30px !important;
+    padding: 40px !important;
+    align-items: flex-start !important;
+}
+
+/* 5. Avatar Scanner Effect */
+.avatar-box {
+    width: 100%; height: 200px;
+    background: url('https://img.icons8.com/color/200/000000/astronaut.png') center/cover no-repeat;
+    border: 2px solid #00e5ff;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+    overflow: hidden;
+}
+/* Scanning Beam */
+.avatar-box::after {
+    content: ''; position: absolute; top: -50%; left: 0; width: 100%; height: 50%;
+    background: linear-gradient(to bottom, transparent, rgba(0, 255, 65, 0.4), transparent);
+    animation: radar-scan 2s linear infinite;
+}
+
+.commander-label {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffd700; text-align: center; padding: 5px 0;
+    font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: bold;
+    border-top: 1px solid #ffd700;
+}
+
+/* 6. The Typewriter Text Box */
+.dialogue-box {
+    font-family: 'Rajdhani', monospace !important;
+    font-size: 24px !important;
+    color: #ddd !important;
+    line-height: 1.6 !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.3) !important;
+    min-height: 150px;
+}
+
+#story-text { margin-top: 0; }
+
+/* 7. Tutorial Visuals Box (Nag-g-glow at lumulutang) */
+#tutorial-visual {
+    margin-top: 20px !important;
+    text-align: center !important;
+    font-family: 'Orbitron', sans-serif !important;
+    animation: slight-float 3s ease-in-out infinite;
+}
+
+/* 8. Footer Controls */
+.comm-footer {
+    padding: 20px 30px !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    border-top: 1px solid #334 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.comm-footer button { margin: 0 !important; font-size: 16px !important; padding: 12px 30px !important; }
+
+/* --- GOD-LEVEL ANIMATIONS --- */
+@keyframes hologram-fade-in {
+    0% { opacity: 0; transform: scale(1.1) perspective(500px) rotateX(10deg); filter: blur(10px); }
+    100% { opacity: 1; transform: scale(1) perspective(500px) rotateX(0); filter: blur(0); }
+}
+@keyframes radar-scan {
+    0% { top: -50%; }
+    100% { top: 100%; }
+}
+@keyframes slight-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* The Blinking Typing Cursor */
+.terminal-cursor {
+    display: inline-block;
+    width: 12px; height: 24px;
+    background-color: #00ff41;
+    margin-left: 5px;
+    vertical-align: middle;
+    animation: cursor-blink 0.8s infinite;
+    box-shadow: 0 0 10px #00ff41;
+}
+@keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* =========================================
+   🚀 MASTER TEACHER DASHBOARD CSS (STRICT)
+   ========================================= */
+
+/* 1. THE MAIN CONTAINER (Locks to Screen Size) */
+#teacher-dashboard {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    background: #05070a !important;
+    z-index: 999999 !important;
+    display: none; /* Controlled by JS .hidden */
+    flex-direction: column !important;
+    overflow: hidden !important; /* Walang labis, walang kulang */
+}
+
+body.dashboard-active #teacher-dashboard:not(.hidden) {
+    display: flex !important;
+}
+
+/* 2. THE TOP HEADER */
+.dash-top-bar {
+    flex: 0 0 80px !important; /* Laging 80px ang taas, bawal lumiit */
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0 30px !important;
+    background: rgba(0, 15, 30, 0.95) !important;
+    border-bottom: 2px solid #00e5ff !important;
+    box-shadow: 0 5px 20px rgba(0, 229, 255, 0.15) !important;
+    z-index: 100;
+}
+.dash-branding h2 { margin: 0; font-size: 26px; font-family: 'Orbitron'; color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
+.status-indicator { color: #ffd700; font-family: 'Courier New'; font-weight: bold; font-size: 14px; margin-top: 5px; }
+.dash-controls { display: flex; gap: 15px; align-items: center; }
+.dash-controls button { margin: 0; padding: 12px 30px; font-size: 14px; min-width: 180px; }
+.control-divider { width: 2px; height: 30px; background: #334; margin: 0 10px; }
+
+/* 3. TABS CONTAINER */
+.dash-tabs-container {
+    flex: 0 0 60px !important; /* Laging 60px ang taas */
+    display: flex !important;
+    gap: 10px !important;
+    padding: 15px 30px 0 30px !important;
+    background: #020408 !important;
+    border-bottom: 1px solid #223 !important;
+    z-index: 90;
+}
+
+/* 4. THE MAIN VIEWPORT (Ang sikreto para hindi mag-half screen) */
+.dash-main-viewport {
+    flex: 1 1 auto !important; /* Kukunin niya LAHAT ng natitirang espasyo pababa */
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important; /* Ang loob lang dapat ang mag-scroll! */
+    padding: 15px 30px !important;
+}
+
+/* 5. INDIVIDUAL VIEWS (Roster, Spy, Podium, Reports) */
+.dash-view {
+    display: none !important; /* Default hidden */
+    flex: 1 1 auto !important; /* Banat mula taas hanggang baba */
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+.dash-view:not(.hidden) {
+    display: flex !important; /* Ipakita kapag active */
+}
+
+/* --- SPECIFIC VIEW TWEAKS --- */
+
+/* Spy Grid & Roster Grid Scrolling */
+#spy-grid-container, #roster-grid {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    align-content: flex-start !important;
+    padding-bottom: 50px !important;
+}
+
+/* Podium View Strict Positioning */
+#view-podium {
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+.nexus-runner-up-list {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    overflow-y: auto !important;
+    margin-top: 30px !important;
+    background: rgba(0,0,0,0.5);
+    border-top: 1px solid rgba(0, 229, 255, 0.3);
+    z-index: 10;
+}
+
+/* Reports Table Full Screen */
+#view-reports { align-items: center !important; }
+.reports-header-bar {
+    flex: 0 0 auto !important; /* Wag liliit */
+    width: 100% !important;
+    max-width: 1400px !important;
+    display: flex !important; justify-content: space-between !important;
+    margin-bottom: 20px !important;
+}
+.reports-stats-group { display: flex; gap: 15px; }
+.reports-table-container {
+    flex: 1 1 auto !important; /* Banat pababa ang table */
+    width: 100% !important;
+    max-width: 1400px !important;
+    overflow-y: auto !important; /* TABLE SCROLLING */
+    background: rgba(5, 10, 15, 0.8) !important;
+    border: 2px solid #334 !important; border-bottom: none !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+.reports-table-container table { width: 100%; border-collapse: collapse; }
+.reports-table-container th { position: sticky; top: 0; background: #0a0f1a; z-index: 10; border-bottom: 3px solid #00e5ff; padding: 20px 15px; color: #00e5ff; font-family: 'Orbitron'; font-size: 13px; }
+.reports-table-container td { padding: 22px 15px; border-bottom: 1px solid rgba(0,229,255,0.1); }
+
+/* =========================================
+   🚀 ANTI-SPLIT ABSOLUTE DASHBOARD CSS
+   ========================================= */
+
+/* 1. Main Dashboard Body */
+#teacher-dashboard {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    background: #05070a !important;
+    z-index: 999999 !important;
+    display: none; 
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+body.dashboard-active #teacher-dashboard:not(.hidden) {
+    display: flex !important;
+}
+
+/* 2. Top Bar & Tabs (Naka-Lock ang Taas) */
+#dash-header-bar {
+    height: 80px !important; flex-shrink: 0 !important;
+    display: flex !important; justify-content: space-between !important; align-items: center !important;
+    padding: 0 30px !important; background: rgba(0, 15, 30, 0.95) !important;
+    border-bottom: 2px solid #00e5ff !important;
+}
+#dash-tabs-bar {
+    height: 60px !important; flex-shrink: 0 !important;
+    display: flex !important; gap: 10px !important;
+    padding: 15px 30px 0 30px !important; background: #020408 !important;
+    border-bottom: 1px solid #223 !important;
+}
+
+/* 3. THE MAGIC CONTAINER: Absolute Viewport */
+#dash-absolute-viewport {
+    position: relative !important; /* Ito ang Anchor! */
+    flex-grow: 1 !important; /* Sakupin ang natitirang height */
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* 4. THE ABSOLUTE CARDS (Hinding-hindi na maghahati!) */
+.absolute-card {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 20px 30px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #05070a !important; /* Solid background para takpan ang nasa ilalim */
+    z-index: 1 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.2s ease-in-out !important;
+}
+
+/* Pag tinawag ng JS, lilitaw sa pinakataas */
+.absolute-card:not(.hidden) {
+    z-index: 10 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* --- Internal Formatting --- */
+#view-podium { align-items: center !important; justify-content: flex-start !important; }
+.nexus-runner-up-list { flex-grow: 1 !important; width: 100%; max-width: 1200px; overflow-y: auto; margin-top: 30px; }
+#spy-grid-container, #roster-grid { flex-grow: 1 !important; overflow-y: auto !important; align-content: flex-start !important; }
+
+#view-reports { align-items: center !important; }
+.reports-header-bar { width: 100%; max-width: 1400px; display: flex; justify-content: space-between; margin-bottom: 20px; flex-shrink: 0; }
+.reports-stats-group { display: flex; gap: 15px; }
+.reports-table-container { 
+    width: 100%; max-width: 1400px; flex-grow: 1 !important; 
+    overflow-y: auto !important; border: 2px solid #334; 
+    border-radius: 12px 12px 0 0; background: rgba(5,10,15,0.8);
+}
+.reports-table-container table { width: 100%; border-collapse: collapse; }
+.reports-table-container th { position: sticky; top: 0; background: #0a0f1a; z-index: 10; border-bottom: 3px solid #00e5ff; padding: 20px 15px; color: #00e5ff; }
+.reports-table-container td { padding: 22px 15px; border-bottom: 1px solid rgba(0,229,255,0.1); }
