@@ -1506,49 +1506,46 @@
 
         
 
-        <<div id="teacher-dashboard" class="hidden">
+        <div id="teacher-dashboard" class="hidden">
     
-    <div class="dashboard-header">
-        <div class="header-status">
-            <h2 class="neon-text" style="margin: 0; font-size: 24px; font-family: 'Orbitron'; color: #00e5ff; text-shadow: 0 0 10px #00e5ff;">CLASS-<span id="dash-room-code">####</span></h2>
-            <div id="dash-status" style="color: #ffd700; font-family: 'Courier New', monospace; margin-top: 5px; font-weight: bold;">AGENTS: 0</div>
+    <div id="dash-header-bar">
+        <div class="dash-branding">
+            <h2 class="neon-text">CLASS-<span id="dash-room-code">####</span></h2>
+            <div id="dash-status" class="status-indicator">AGENTS: 0</div>
         </div>
-        
-        <div class="header-controls" style="display: flex; gap: 15px; align-items: center;">
-            <button id="btn-start-round" class="btn primary" onclick="window.adminStartRound()" style="margin: 0; padding: 10px 30px; font-size: 14px; min-width: 180px;">▶ START ROUND</button>
-            <button id="btn-freeze-toggle" class="btn secondary hidden" onclick="window.adminFreezeAll()" style="margin: 0; padding: 10px 30px; font-size: 14px; border-color: #00e5ff; color: #00e5ff;">❄️ FREEZE</button>
-            <button id="btn-stop-round" class="btn danger" onclick="window.adminForceStop()" style="margin: 0; padding: 10px 30px; font-size: 14px; background: rgba(255,0,85,0.2); border-color: #ff0055; color: #ff0055;">⏹ STOP ROUND</button>
-            <div style="width: 2px; height: 30px; background: #333; margin: 0 10px;"></div>
-            <button id="btn-exit-dash" class="btn text-only" onclick="window.closeClassEntirely()" style="margin: 0; padding: 10px; color: #888;">EXIT</button>
+        <div class="dash-controls">
+            <button id="btn-start-round" class="btn primary" onclick="window.adminStartRound()">▶ START ROUND</button>
+            <button id="btn-freeze-toggle" class="btn secondary hidden" onclick="window.adminFreezeAll()">❄️ FREEZE</button>
+            <button id="btn-stop-round" class="btn danger" onclick="window.adminForceStop()">⏹ STOP ROUND</button>
+            <div class="control-divider"></div>
+            <button id="btn-exit-dash" class="btn text-only" onclick="window.closeClassEntirely()">EXIT SYSTEM</button>
         </div>
     </div>
 
-    <div class="dashboard-viewport">
-        
-        <div class="dash-tabs">
-            <button class="tab-btn active" onclick="window.switchDashTab('roster', event)">📡 LIVE ROSTER</button>
-            <button class="tab-btn" onclick="window.switchDashTab('grid', event)">🕵️‍♂️ SPY GRID</button>
-            <button class="tab-btn" onclick="window.switchDashTab('podium', event)">🏆 RANKINGS</button>
-            <button class="tab-btn" onclick="window.switchDashTab('reports', event)">📄 DATA REPORTS</button>
-        </div>
+    <div id="dash-tabs-bar">
+        <button class="tab-btn active" onclick="window.switchDashTab('roster', event)">📡 LIVE ROSTER</button>
+        <button class="tab-btn" onclick="window.switchDashTab('grid', event)">🕵️‍♂️ SPY GRID</button>
+        <button class="tab-btn" onclick="window.switchDashTab('podium', event)">🏆 RANKINGS</button>
+        <button class="tab-btn" onclick="window.switchDashTab('reports', event)">📄 DATA REPORTS</button>
+    </div>
 
-        <div id="view-roster" class="dash-view">
+    <div id="dash-absolute-viewport">
+        
+        <div id="view-roster" class="dash-view absolute-card">
            <div id="roster-grid"></div>
         </div>
         
-        <div id="view-grid" class="dash-view hidden">
+        <div id="view-grid" class="dash-view absolute-card hidden">
             <div id="spy-grid-container"></div>
         </div>
 
-        <div id="view-podium" class="dash-view hidden">
+        <div id="view-podium" class="dash-view absolute-card hidden">
             <div class="grand-orbits">
                 <div class="g-orbit g-orbit-1"></div>
                 <div class="g-orbit g-orbit-2"></div>
                 <div class="g-orbit g-orbit-3"></div>
             </div>
-            
             <h2 class="grand-leaderboard-title">CURRENT LEADERBOARD</h2>
-            
             <div class="grand-podium-container">
                 <div class="grand-pillar silver-pillar">
                     <div class="css-medal silver-medal"><div class="medal-ribbon"></div><div class="medal-coin">⭐</div></div>
@@ -1570,16 +1567,14 @@
                 </div>
                 <div class="grand-platform"></div>
             </div>
-            
             <div class="nexus-runner-up-list">
                 <h3 class="nexus-list-title">ADDITIONAL OPERATIVES</h3>
                 <div id="podium-list-body"></div>
             </div>
         </div>
 
-        <div id="view-reports" class="dash-view hidden">
-            
-            <div id="reports-header-bar">
+        <div id="view-reports" class="dash-view absolute-card hidden">
+            <div class="reports-header-bar">
                 <div class="reports-stats-group">
                     <div class="stat-box yellow-box">
                         <span class="stat-label">CLASS AVG SCORE</span>
@@ -1593,7 +1588,7 @@
                 <button class="btn secondary export-btn" onclick="window.exportToCSV()">💾 EXPORT CSV</button>
             </div>
             
-            <div id="reports-table-container">
+            <div class="reports-table-container">
                 <table>
                     <thead>
                         <tr>
@@ -1608,10 +1603,9 @@
                     <tbody id="report-list-body"></tbody>
                 </table>
             </div>
-            
         </div>
 
-    </div> </div> ```
+    </div> </div>
 
 
 </div>
