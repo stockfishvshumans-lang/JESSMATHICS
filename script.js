@@ -96,67 +96,206 @@ function restoreSession() {
 }
 
 
-// ✅ NEW: Triggered only when clicking "CLASS MODE" if session exists
+// ==========================================
+// 🎛️ DASHBOARD TAB CONTROLLER (THE EXECUTIONER)
+// ==========================================
+window.switchDashTab = function(tabName, event) {
+    if(window.Sound && event) window.Sound.click();
+    
+    // 1. EXECUTION PROTOCOL: Durugin ang espasyo ng lahat ng hindi active na tabs!
+    document.querySelectorAll('.dash-view').forEach(d => {
+        d.classList.add('hidden');
+        d.style.setProperty('display', 'none', 'important'); // Patayin sa paningin
+        d.style.setProperty('height', '0px', 'important');   // Tanggalin ang height
+        d.style.setProperty('flex-grow', '0', 'important');  // Bawal umagaw ng space
+        d.style.setProperty('padding', '0', 'important');
+        d.style.setProperty('margin', '0', 'important');
+    });
+    
+    // 2. Tanggalin ang highlight sa lahat ng buttons
+    document.querySelectorAll('.dash-tabs-container .tab-btn, .dash-tabs .tab-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+    
+    // 3. RESURRECTION PROTOCOL: Ibanat ang napiling tab nang buong-buo!
+    const selectedView = document.getElementById(`view-${tabName}`);
+    if (selectedView) {
+        selectedView.classList.remove('hidden');
+        
+        // I-override at angkinin ang 100% ng screen!
+        selectedView.style.setProperty('display', 'flex', 'important');
+        selectedView.style.setProperty('flex-direction', 'column', 'important');
+        selectedView.style.setProperty('flex-grow', '1', 'important');
+        selectedView.style.setProperty('height', '100%', 'important');
+        selectedView.style.setProperty('width', '100%', 'important');
+    }
+    
+    // 4. I-Highlight ang pinindot na button
+    if(event && event.target) {
+        event.target.classList.add('active');
+    } else {
+        const targetBtn = document.querySelector(`.tab-btn[onclick*="'${tabName}'"]`);
+        if(targetBtn) targetBtn.classList.add('active');
+    }
+
+    // 5. I-Render LAmang ang kailangan
+    setTimeout(() => {
+        try {
+            if(tabName === 'grid' && window.updateSpyView) window.updateSpyView();
+            if(tabName === 'roster' && window.updateRosterView) window.updateRosterView();
+            if(tabName === 'podium' && window.updatePodiumView) window.updatePodiumView();
+            if(tabName === 'reports' && window.updateReportView) window.updateReportView();
+        } catch(e) { console.error(e); }
+    }, 50);
+};
+
+// ==========================================
+// 🚀 DASHBOARD DEPLOYER (STRICT FULLSCREEN)
+// ==========================================
+window.createClassroom = async function() {
+    console.log("Initializing Class Creation...");
+    window.agentTelemetry = {};
+    if(!window.validateName()) return;
+
+    const classNameInput = document.getElementById('class-name-input');
+    const className = classNameInput ? classNameInput.value : "Classroom";
+    
+    const timeDisplay = document.getElementById('time-display');
+    const minutes = timeDisplay ? parseInt(timeDisplay.getAttribute('data-value')) : 2;
+
+    const roundsDisplay = document.getElementById('rounds-display');
+    const maxRounds = roundsDisplay ? parseInt(roundsDisplay.getAttribute('data-value')) : 1;
+    
+    const topicEl = document.querySelector('input[name="topic-select"]:checked');
+    const topic = topicEl ? topicEl.value : 'integers';
+
+    let selectedOps = [];
+    if(topic === 'mixed') {
+        selectedOps = ['+', '-', 'x', '÷', 'Alg']; 
+    } else {
+        if(document.getElementById('chk-add')?.checked) selectedOps.push('+');
+        if(document.getElementById('chk-sub')?.checked) selectedOps.push('-');
+        if(document.getElementById('chk-mul')?.checked) selectedOps.push('x');
+        if(document.getElementById('chk-div')?.checked) selectedOps.push('÷');
+        if(topic === 'algebra') selectedOps.push('Alg'); 
+    }
+    if(selectedOps.length === 0) selectedOps = ['+']; 
+
+    const diffEl = document.querySelector('input[name="class-diff"]:checked');
+    const difficulty = diffEl ? diffEl.value : 'medium';
+
+    const code = "CLASS-" + Math.floor(1000 + Math.random() * 9000);
+    currentRoomId = code; isHost = true; state.gameMode = 'classroom';
+
+    if(typeof saveSession === 'function') saveSession('teacher', code, myName);
+
+    // 🚨 STRICT DASHBOARD DEPLOYMENT 🚨
+    try {
+        document.body.classList.add('dashboard-active');
+
+        const setupModal = document.getElementById('classroom-setup-modal');
+        if (setupModal) setupModal.classList.add('hidden');
+        
+        const jessBtn = document.getElementById("jessbot-toggle-btn");
+        const commsBtn = document.getElementById("comms-toggle-btn");
+        if(jessBtn) jessBtn.style.display = "none";
+        if(commsBtn) commsBtn.style.display = "none";
+        
+        // FORCE THE DASHBOARD TO BE THE ONLY THING ON SCREEN
+        const dash = document.getElementById('teacher-dashboard');
+        if (dash) {
+            dash.classList.remove('hidden');
+            dash.style.setProperty('display', 'flex', 'important'); 
+            dash.style.setProperty('flex-direction', 'column', 'important');
+            dash.style.setProperty('position', 'fixed', 'important');
+            dash.style.setProperty('top', '0', 'important');
+            dash.style.setProperty('left', '0', 'important');
+            dash.style.setProperty('width', '100vw', 'important');
+            dash.style.setProperty('height', '100vh', 'important');
+            dash.style.setProperty('z-index', '999999', 'important');
+            dash.style.setProperty('background', '#05070a', 'important');
+        }
+
+        const roomCodeEl = document.getElementById('dash-room-code');
+        const statusEl = document.getElementById('dash-status');
+        if (roomCodeEl) roomCodeEl.innerText = code.replace("CLASS-", ""); 
+        if (statusEl) statusEl.innerText = "STATUS: WAITING FOR AGENTS...";
+        
+    } catch (uiError) {
+        console.error("❌ UI CRITICAL ERROR:", uiError);
+    }
+
+    try {
+        await setDoc(doc(db, "rooms", code), {
+            host: myName, roomName: className, mode: 'classroom', status: 'waiting',
+            currentRound: 0, maxRounds: maxRounds,
+            config: { timeLimit: minutes * 60, difficulty: difficulty, topic: topic, ops: selectedOps },
+            createdAt: new Date()
+        });
+        window.monitorClassroom(code);
+    } catch (e) { 
+        alert("Error creating class: " + e.message); 
+    }
+};
+
+// ==========================================
+// 🔄 DASHBOARD RESUME (FOR REFRESH)
+// ==========================================
 window.resumeClassSession = function() {
-    if (!pendingSessionData) return;
+    if (!pendingSessionData) return;
+    const data = pendingSessionData;
 
-    const data = pendingSessionData;
-    console.log("🚀 RESUMING SESSION...", data);
-
-    if (data.role === 'teacher') {
-        // --- RESUME TEACHER ---
-       // --- RESUME TEACHER ---
+    if (data.role === 'teacher') {
         window.myName = data.name; 
         document.body.classList.add('dashboard-active'); 
         
-        document.getElementById("start-modal").classList.add("hidden");
+        const startModal = document.getElementById("start-modal");
+        if(startModal) startModal.classList.add("hidden");
         
-        // 🟢 IRONCLAD DASHBOARD RESUME
+        // FORCE THE DASHBOARD TO BE THE ONLY THING ON SCREEN AGAIN
         const dash = document.getElementById("teacher-dashboard");
         if(dash) {
             dash.classList.remove("hidden");
-            dash.style.display = 'flex'; 
-            dash.style.flexDirection = 'column';
-            dash.style.position = 'fixed';
-            dash.style.top = '0';
-            dash.style.left = '0';
-            dash.style.width = '100vw';
-            dash.style.height = '100vh';
-            dash.style.zIndex = '999999';
+            dash.style.setProperty('display', 'flex', 'important'); 
+            dash.style.setProperty('flex-direction', 'column', 'important');
+            dash.style.setProperty('position', 'fixed', 'important');
+            dash.style.setProperty('top', '0', 'important');
+            dash.style.setProperty('left', '0', 'important');
+            dash.style.setProperty('width', '100vw', 'important');
+            dash.style.setProperty('height', '100vh', 'important');
+            dash.style.setProperty('z-index', '999999', 'important');
+            dash.style.setProperty('background', '#05070a', 'important');
         }
         
         const roomCodeEl = document.getElementById("dash-room-code");
-        // Fix double "CLASS-" text if present
-        if(roomCodeEl) roomCodeEl.innerText = data.room.replace("CLASS-", "");
-        
-        currentRoomId = data.room;
-        isHost = true;
-        state.gameMode = 'classroom';
-        window.monitorClassroom(data.room);
+        if(roomCodeEl) roomCodeEl.innerText = data.room.replace("CLASS-", "");
+        
+        currentRoomId = data.room;
+        isHost = true;
+        state.gameMode = 'classroom';
+        if(window.monitorClassroom) window.monitorClassroom(data.room);
 
-    } else if (data.role === 'student') {
-        // --- RESUME STUDENT ---
-        window.myName = data.name;
-        document.body.classList.remove('dashboard-active');
-        
-        document.getElementById("start-modal").classList.add("hidden");
-        
-        state.gameMode = 'classroom';
-        currentRoomId = data.room;
-        isHost = false;
-        
-        // Re-fetch room data to ensure it still exists
-        getDoc(doc(db, "rooms", data.room)).then(snap => {
-            if (snap.exists()) {
-                const rData = snap.data();
-                enterClassroomLobby(data.room, rData.roomName);
-            } else {
-                alert("Cannot Resume: Class has ended or room invalid.");
-                clearSession();
-                location.reload();
-            }
-        });
-    }
+    } else if (data.role === 'student') {
+        window.myName = data.name;
+        document.body.classList.remove('dashboard-active');
+        const startModal = document.getElementById("start-modal");
+        if(startModal) startModal.classList.add("hidden");
+        
+        state.gameMode = 'classroom';
+        currentRoomId = data.room;
+        isHost = false;
+        
+        getDoc(doc(db, "rooms", data.room)).then(snap => {
+            if (snap.exists()) {
+                const rData = snap.data();
+                if(window.enterClassroomLobby) window.enterClassroomLobby(data.room, rData.roomName);
+            } else {
+                alert("Cannot Resume: Class has ended or room invalid.");
+                if(typeof clearSession === 'function') clearSession();
+                location.reload();
+            }
+        });
+    }
 };
 
 // --- 3. ASSET MANAGER (Visuals) ---
@@ -1900,31 +2039,7 @@ function enterClassroomLobby(code, roomName) {
         }
     });
 
-    // Student List Logic (Bulletproofed)
-    const q = query(collection(db, "rooms", code, "students"));
-    if(dashboardUnsub) dashboardUnsub(); 
-    let renderTimeout;
     
-    dashboardUnsub = onSnapshot(q, (snapshot) => {
-        currentStudentData = [];
-        snapshot.forEach(doc => { 
-            let sData = doc.data();
-            sData.id = doc.id; // Ensure ID exists
-            currentStudentData.push(sData); 
-        });
-        
-        // Sort from highest score to lowest
-        currentStudentData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-        
-        clearTimeout(renderTimeout);
-        renderTimeout = setTimeout(() => {
-            // 🟢 Isolate errors so one broken view doesn't break the whole dashboard
-            try { if(window.updatePodiumView) window.updatePodiumView(); } catch(e) { console.error(e); }
-            try { if(window.updateSpyView) window.updateSpyView(); } catch(e) { console.error(e); }
-            try { if(window.updateReportView) window.updateReportView(); } catch(e) { console.error(e); }
-            try { if(window.updateRosterView) window.updateRosterView(); } catch(e) { console.error(e); }
-        }, 300); 
-    });
 }
 
 // 🟢 HELPER: TOGGLE CYBER CURTAIN
@@ -4099,23 +4214,39 @@ window.monitorClassroom = function(code) {
         }
     });
 
-    // Student List Logic (Keep this)
-    const q = query(collection(db, "rooms", code, "students"));
-    if(dashboardUnsub) dashboardUnsub(); 
-    let renderTimeout;
-    dashboardUnsub = onSnapshot(q, (snapshot) => {
-        currentStudentData = [];
-        snapshot.forEach(doc => { currentStudentData.push(doc.data()); });
-        currentStudentData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-        
-        clearTimeout(renderTimeout);
-        renderTimeout = setTimeout(() => {
-            if(window.updatePodiumView) window.updatePodiumView();
-            if(window.updateSpyView) window.updateSpyView();
-            if(window.updateReportView) window.updateReportView();
-            if(window.updateRosterView) window.updateRosterView(); 
-        }, 200); 
-    });
+    // Student List Logic (Bulletproofed)
+    const q = query(collection(db, "rooms", code, "students"));
+    if(dashboardUnsub) dashboardUnsub(); 
+    let renderTimeout;
+    
+    dashboardUnsub = onSnapshot(q, (snapshot) => {
+        currentStudentData = [];
+        snapshot.forEach(doc => { 
+            let sData = doc.data();
+            sData.id = doc.id; // Ensure ID exists
+            currentStudentData.push(sData); 
+        });
+        
+        // Sort from highest score to lowest
+        currentStudentData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+        
+        clearTimeout(renderTimeout);
+        renderTimeout = setTimeout(() => {
+            // 🟢 CRITICAL FIX: Only update the view that is CURRENTLY ACTIVE!
+            // Updating hidden views in the background can sometimes mess up their internal flexbox calculations.
+            const activeRoster = document.getElementById('view-roster');
+            const activeGrid = document.getElementById('view-grid');
+            const activePodium = document.getElementById('view-podium');
+            const activeReports = document.getElementById('view-reports');
+
+            try { 
+                if(activePodium && !activePodium.classList.contains('hidden') && window.updatePodiumView) window.updatePodiumView(); 
+                if(activeGrid && !activeGrid.classList.contains('hidden') && window.updateSpyView) window.updateSpyView(); 
+                if(activeReports && !activeReports.classList.contains('hidden') && window.updateReportView) window.updateReportView(); 
+                if(activeRoster && !activeRoster.classList.contains('hidden') && window.updateRosterView) window.updateRosterView(); 
+            } catch(e) { console.error("Render update error:", e); }
+        }, 300); 
+    });
 };
 
 
@@ -4858,39 +4989,49 @@ window.reportProgress = async function(isFinal = false) {
 
 
 // ==========================================
-// 🎛️ DASHBOARD TAB CONTROLLER (IRONCLAD FIX)
+// 🎛️ DASHBOARD TAB CONTROLLER (IRONCLAD V2)
 // ==========================================
 window.switchDashTab = function(tabName, event) {
-    if(window.Sound) window.Sound.click();
+    if(window.Sound && event) window.Sound.click(); // Only play sound if clicked, not auto-switched
     
-    // 1. Patayin sa display lahat ng views
+    // 1. NUCLEAR HIDE: Reset and hide ALL tabs
     document.querySelectorAll('.dash-view').forEach(d => {
         d.classList.add('hidden');
-        d.style.display = 'none'; 
+        d.style.display = ''; // DONT USE 'none'. Let CSS .hidden handle it!
     });
     
-    // 2. Tanggalin highlight sa lahat ng buttons
-    document.querySelectorAll('.dash-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    // 2. Remove active state from all buttons
+    document.querySelectorAll('.dash-tabs-container .tab-btn, .dash-tabs .tab-btn').forEach(b => {
+        b.classList.remove('active');
+    });
     
-    // 3. FORCE SHOW & STRETCH ANG PINILING TAB
+    // 3. FORCE SHOW ACTIVE TAB
     const selectedView = document.getElementById(`view-${tabName}`);
     if (selectedView) {
         selectedView.classList.remove('hidden');
         
-        // 🟢 IRONCLAD UI DIRECTIVE: Piliting sakupin ang buong space!
-        selectedView.style.display = 'flex'; 
-        selectedView.style.flexDirection = 'column'; // Pababang pwesto
-        selectedView.style.flexGrow = '1';           // Banat hanggang sahig
-        selectedView.style.height = '100%';          // Sakupin ang 100% height
+        // Remove ALL inline styles that might be squishing it!
+        selectedView.removeAttribute('style'); 
+        
+        // Apply Ironclad Flexbox rules directly to be safe
+        selectedView.style.display = 'flex';
+        selectedView.style.flexDirection = 'column';
+        selectedView.style.flexGrow = '1';
         selectedView.style.width = '100%';
-        selectedView.style.overflow = 'hidden';      // Bawal mag-scroll ang main frame
+        selectedView.style.height = '100%';
+        selectedView.style.overflow = 'hidden';
     }
     
+    // Highlight the clicked button
     if(event && event.target) {
         event.target.classList.add('active');
+    } else {
+        // If auto-switched (e.g., from JS logic), find the right button and highlight it
+        const targetBtn = document.querySelector(`.tab-btn[onclick*="'${tabName}'"]`);
+        if(targetBtn) targetBtn.classList.add('active');
     }
 
-    // 4. I-Render ang data ng TAB
+    // 4. TRIGGER DATA RENDERERS
     if(tabName === 'grid' && window.updateSpyView) window.updateSpyView();
     if(tabName === 'roster' && window.updateRosterView) window.updateRosterView();
     if(tabName === 'podium' && window.updatePodiumView) window.updatePodiumView();
@@ -5534,125 +5675,7 @@ window.closeClassroomSetup = function() {
     document.getElementById("start-modal").classList.remove("hidden");
 };
 
-window.createClassroom = async function() {
-    console.log("Initializing Class Creation...");
-    window.agentTelemetry = {};
 
-    if(!window.validateName()) {
-        console.warn("Name validation failed.");
-        return;
-    }
-
-    const classNameInput = document.getElementById('class-name-input');
-    const className = classNameInput ? classNameInput.value : "Classroom";
-    
-    // CAPTURE TIME
-    const timeDisplay = document.getElementById('time-display');
-    const minutes = timeDisplay ? parseInt(timeDisplay.getAttribute('data-value')) : 2;
-
-    // CAPTURE ROUNDS
-    const roundsDisplay = document.getElementById('rounds-display');
-    const maxRounds = roundsDisplay ? parseInt(roundsDisplay.getAttribute('data-value')) : 1;
-    
-    // CAPTURE TOPIC & OPS
-    const topicEl = document.querySelector('input[name="topic-select"]:checked');
-    const topic = topicEl ? topicEl.value : 'integers';
-
-    let selectedOps = [];
-    if(topic === 'mixed') {
-        selectedOps = ['+', '-', 'x', '÷', 'Alg']; 
-    } else {
-        if(document.getElementById('chk-add')?.checked) selectedOps.push('+');
-        if(document.getElementById('chk-sub')?.checked) selectedOps.push('-');
-        if(document.getElementById('chk-mul')?.checked) selectedOps.push('x');
-        if(document.getElementById('chk-div')?.checked) selectedOps.push('÷');
-        if(topic === 'algebra') selectedOps.push('Alg'); 
-    }
-    
-    if(selectedOps.length === 0) selectedOps = ['+']; 
-
-    const diffEl = document.querySelector('input[name="class-diff"]:checked');
-    const difficulty = diffEl ? diffEl.value : 'medium';
-
-    const code = "CLASS-" + Math.floor(1000 + Math.random() * 9000);
-    console.log("Generated Class Code:", code);
-
-    currentRoomId = code; isHost = true; state.gameMode = 'classroom';
-
-    saveSession('teacher', code, myName);
-
-    // --- 🚨 UI SWITCH (EMERGENCY FORCE VISIBILITY) 🚨 ---
-   try {
-        // 1. Add special class to BODY
-        document.body.classList.add('dashboard-active');
-
-        // 2. Hide Setup Modal
-        const setupModal = document.getElementById('classroom-setup-modal');
-        if (setupModal) setupModal.classList.add('hidden');
-        
-        // 🟢 FIX 3: HIDE SIDEBAR TOGGLES PARA DI HUMARANG
-        const jessBtn = document.getElementById("jessbot-toggle-btn");
-        const commsBtn = document.getElementById("comms-toggle-btn");
-        if(jessBtn) jessBtn.style.display = "none";
-        if(commsBtn) commsBtn.style.display = "none";
-        
-        // 3. Force Show Dashboard
-        // 3. Force Show Dashboard (IRONCLAD OVERRIDE)
-        const dash = document.getElementById('teacher-dashboard');
-        if (dash) {
-            dash.classList.remove('hidden');
-            dash.style.display = 'flex'; 
-            dash.style.flexDirection = 'column';
-            dash.style.position = 'fixed';
-            dash.style.top = '0';
-            dash.style.left = '0';
-            dash.style.width = '100vw';
-            dash.style.height = '100vh';
-            dash.style.zIndex = '999999';
-            dash.style.background = '#05070a';
-        }
-
-
-       
-        
-
-        const roomCodeEl = document.getElementById('dash-room-code');
-        const statusEl = document.getElementById('dash-status');
-    
-        if (roomCodeEl) roomCodeEl.innerText = code.replace("CLASS-", ""); 
-        
-        if (statusEl) statusEl.innerText = "STATUS: WAITING FOR AGENTS...";
-        
-        console.log("✅ UI FORCED SWITCH SUCCESS");
-    } catch (uiError) {
-        console.error("❌ UI CRITICAL ERROR:", uiError);
-        alert("UI Failed to Switch. Check Console.");
-    }
-
-    // --- SAVE TO FIRESTORE ---
-    try {
-        await setDoc(doc(db, "rooms", code), {
-            host: myName, roomName: className, mode: 'classroom', status: 'waiting',
-            
-            // SAVE ROUND INFO
-            currentRound: 0,
-            maxRounds: maxRounds,
-            
-            config: { 
-                timeLimit: minutes * 60, 
-                difficulty: difficulty,
-                topic: topic,      
-                ops: selectedOps    
-            },
-            createdAt: new Date()
-        });
-        console.log("Room created in Firestore");
-        window.monitorClassroom(code);
-    } catch (e) { 
-        console.error("Firestore Error:", e);
-        alert("Error creating class: " + e.message); 
-    }
-};
 
 // --- 🛠️ STEPPER HELPER (For Time Config) ---
 window.adjustTime = function(delta) {
@@ -6222,30 +6245,34 @@ function runCinematicSequence() {
 // --- 📖 STORY & TUTORIAL LOGIC ---
 
 const storyData = [
-    {
-        text: "AGENT, DO YOU COPY? This is Commander Vector. The Nullifiers have breached the Logic Gate.",
-        visual: null
-    },
-    {
-        text: "They feed on chaos. Their weakness? PURE MATHEMATICS. Your keyboard is your weapon system.",
-        visual: null
-    },
-    {
-        text: "TARGET ACQUIRED: Solve the equation on the approaching threats to charge your lasers.",
-        visual: `<div class="demo-meteor">5 + 3</div><br>⬇️<br><span style="color:#00e5ff">TYPE "8" & ENTER</span>`
-    },
-    {
-        text: "WARNING: If they reach the ground, our shields will take damage. Do not let them pass.",
-        visual: `<span style="color:#ff0055">SHIELD INTEGRITY CRITICAL</span>`
-    },
-    {
-        text: "Every 5th Wave, a MOTHERSHIP will appear. It requires multiple calculations to destroy.",
-        visual: `<span style="color:#ffd700; font-size: 20px;">⚠️ BOSS DETECTED ⚠️</span>`
-    },
-    {
-        text: "Good luck, Agent. Humanity is counting on you. VECTOR OUT.",
-        visual: null
-    }
+    {
+        text: "<span style='color:#ff0055; font-weight:bold;'>[ UPLINK ESTABLISHED ]</span><br><br>AGENT, DO YOU READ ME? This is Commander Vector. The Nullifiers have shattered the Euclidean perimeter. We are the last surviving bastion of logic.",
+        visual: null
+    },
+    {
+        text: "They are entities of pure entropy—feeding on human anxiety and systemic chaos. Conventional weapons are useless. Our only defense is the absolute truth of <span style='color:#00e5ff; font-weight:bold; letter-spacing: 2px;'>PURE MATHEMATICS</span>.",
+        visual: null
+    },
+    {
+        text: "You are now synchronized with the N.E.X.U.S. Defense Grid. Your mind is the targeting computer. Solve the algorithmic anomalies on the incoming hostiles to lock your ion cannons and fire.",
+        visual: `<div style="padding: 10px; border: 1px dashed #00e5ff; background: rgba(0,229,255,0.1);">
+                    <div class="demo-meteor" style="color: #fff; font-size: 24px;">[ 5 + 3 ]</div>
+                    <div style="color: #00ff41; margin: 10px 0;">TARGET ACQUIRED</div>
+                    <span style="color:#00e5ff; font-family:'Orbitron';">INPUT "8" & EXECUTE [ENTER]</span>
+                 </div>`
+    },
+    {
+        text: "<span style='color:#ff0055;'>WARNING:</span> Do not let them breach the lower atmosphere. Every impact destabilizes our core shields. If the math grid falls, humanity goes dark. Permanently.",
+        visual: `<div class="blink" style="color:#ff0055; font-size: 18px; font-family: 'Orbitron'; border-top: 2px solid #ff0055; border-bottom: 2px solid #ff0055; padding: 10px 0;">SHIELD INTEGRITY CRITICAL</div>`
+    },
+    {
+        text: "Be advised: Every 5th deployment wave, a <span style='color:#ffd700;'>CLASS-OMEGA MOTHERSHIP</span> will materialize. Their hulls are reinforced with encrypted logic. It will require rapid, chained calculations to shatter their defenses.",
+        visual: `<span style="color:#ffd700; font-size: 24px; text-shadow: 0 0 15px #ffd700; font-family:'Orbitron';">⚠️ BOSS ANOMALY DETECTED ⚠️</span>`
+    },
+    {
+        text: "The calculations you make today will echo in eternity. Trust your logic. Trust the numbers. <span style='color:#00ff41;'>Give them nothing but zero.</span><br><br>VECTOR OUT.",
+        visual: null
+    }
 ];
 
 let storyIndex = 0;
@@ -6283,32 +6310,53 @@ window.showStoryStep = function(index) {
     isTyping = true;
 
     // Typewriter Effect
-    let i = 0;
-    const speed = 30; // Typing speed ms
-    
-    // Play voice if available
-    if(window.Sound && index === 0) window.Sound.speak("Incoming transmission.");
+    let i = 0;
+    const speed = 25; // Mas pinabilis ng konti para astig
+    
+    // Play voice if available
+    if(window.Sound && index === 0) window.Sound.speak("Incoming transmission.");
 
-    function type() {
-        if (i < data.text.length) {
-            textEl.innerHTML += data.text.charAt(i);
-            i++;
-            // Typing sound effect
-            if (i % 3 === 0 && window.Sound) window.Sound.playTone(800, 'square', 0.05);
-            setTimeout(type, speed);
-        } else {
-            isTyping = false;
-            btn.disabled = false;
-            
-            // Show Visual if exists
-            if (data.visual) {
-                visualEl.innerHTML = data.visual;
-                visualEl.classList.remove('hidden');
-                if(window.Sound) window.Sound.playTone(400, 'sine', 0.2); // Popup sound
-            }
-        }
-    }
-    type();
+    // 🟢 GOD-LEVEL TYPEWRITER LOGIC
+    let isTag = false;
+    let currentHTML = "";
+
+    function type() {
+        if (i < data.text.length) {
+            let char = data.text.charAt(i);
+            currentHTML += char;
+            
+            // Bypass HTML tags (<span...>) para hindi lumabas ang code nang paunti-unti
+            if (char === '<') isTag = true;
+            if (char === '>') isTag = false;
+            
+            // I-inject ang neon cursor sa dulo ng text
+            textEl.innerHTML = currentHTML + "<span class='terminal-cursor'></span>";
+            
+            i++;
+            
+            // Play typing sound (bawasan ang dalas kung nasa loob ng tag)
+            if (!isTag && i % 2 === 0 && window.Sound) {
+                window.Sound.playTone(Math.random() * 200 + 800, 'square', 0.02, 0.05); // High-tech terminal clicks
+            }
+            
+            // Mabilis na pag-type kung nasa loob ng HTML tag, normal speed kung text
+            setTimeout(type, isTag ? 0 : speed);
+        } else {
+            isTyping = false;
+            btn.disabled = false;
+            
+            // I-lock ang final text at i-keep ang cursor na nagbi-blink
+            textEl.innerHTML = currentHTML + "<span class='terminal-cursor'></span>";
+            
+            // Show Visual if exists
+            if (data.visual) {
+                visualEl.innerHTML = data.visual;
+                visualEl.classList.remove('hidden');
+                if(window.Sound) window.Sound.playTone(400, 'sine', 0.2); 
+            }
+        }
+    }
+    type();
 };
 
 window.nextStoryStep = function() {
