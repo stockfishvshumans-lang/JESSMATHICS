@@ -560,6 +560,99 @@
 
     </div>
 
+    
+<div id="quiz-forge-menu-modal" class="modal hidden">
+        <div class="modal-content-landscape" style="width: 850px; max-width: 95vw; height: auto;">
+            
+            <div class="modal-header-landscape">
+                <div class="modal-title" style="color: #b000ff; text-shadow: 0 0 10px #b000ff;">🧠 N.E.X.U.S. QUIZ FORGE</div>
+                <button class="modal-close-btn" onclick="window.closeQuizForgeMenu()">❌ CANCEL</button>
+            </div>
+
+            <div class="lb-mode-tabs" style="display: flex; gap: 10px; margin-top: 15px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+                <button class="tab-btn active" onclick="window.switchQuizTab('auto', event)">⚙️ AUTO-GENERATE</button>
+                <button class="tab-btn" onclick="window.switchQuizTab('join', event)">📡 ENTER CODE</button>
+                <button class="tab-btn" onclick="window.switchQuizTab('create', event)" style="color: #ffd700;">👨‍🏫 CREATE QUIZ</button>
+            </div>
+
+            <div id="quiz-tab-auto" class="quiz-forge-tab" style="padding: 20px 0;">
+                <div class="setup-grid-layout" style="grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="setup-column">
+                        <h4 style="color:#00e5ff; margin-top:0;">1. SELECT TOPIC</h4>
+                        <div class="radio-group" style="display:flex; gap:10px; margin-bottom:20px;">
+                            <label class="radio-btn"><input type="radio" name="qf-topic" value="integers" checked><span>INTEGERS</span></label>
+                            <label class="radio-btn"><input type="radio" name="qf-topic" value="algebra"><span>ALGEBRA</span></label>
+                        </div>
+
+                        <h4 style="color:#00e5ff; margin-top:0;">2. OPERATIONS</h4>
+                        <div class="chip-container" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+                            <label class="neon-chip"><input type="checkbox" id="qf-op-add" checked><span>[+] ADD</span></label>
+                            <label class="neon-chip"><input type="checkbox" id="qf-op-sub"><span>[-] SUB</span></label>
+                            <label class="neon-chip"><input type="checkbox" id="qf-op-mul"><span>[×] MUL</span></label>
+                            <label class="neon-chip"><input type="checkbox" id="qf-op-div"><span>[÷] DIV</span></label>
+                        </div>
+                    </div>
+                    <div class="setup-column">
+                        <h4 style="color:#ffd700; margin-top:0;">3. DIFFICULTY (DIGITS)</h4>
+                        <select id="qf-digits" class="main-input" style="width:100%; margin-bottom:20px;">
+                            <option value="1">1-Digit (1 to 9)</option>
+                            <option value="2">2-Digits (10 to 99)</option>
+                            <option value="3">3-Digits (100 to 999)</option>
+                        </select>
+
+                        <h4 style="color:#ffd700; margin-top:0;">4. QUANTITY</h4>
+                        <input type="number" id="qf-count" class="main-input" value="10" min="5" max="50" style="width:100%; margin-bottom:20px;">
+
+                        <button class="btn primary" style="width:100%; background:#b000ff; color:#fff; box-shadow:0 0 15px #b000ff;" onclick="window.startAutoQuiz()">▶ START SIMULATION</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="quiz-tab-join" class="quiz-forge-tab hidden" style="padding: 40px; text-align:center;">
+                <h3 style="color:#00ff41;">ENTER TEACHER TRANSMISSION CODE</h3>
+                <input type="text" id="qf-join-code" class="cyber-input" style="font-size:30px; letter-spacing:10px; text-align:center; max-width:400px; margin:20px auto; display:block;" placeholder="CODE">
+                <button class="btn primary" style="background:#00ff41; color:#000;" onclick="window.joinCustomQuiz()">ACCESS QUIZ</button>
+            </div>
+
+            <div id="quiz-tab-create" class="quiz-forge-tab hidden" style="padding: 20px 0;">
+                <input type="text" id="qf-create-title" class="main-input" placeholder="QUIZ TITLE (e.g. Midterm Drill)" style="width:100%; margin-bottom:15px; border-color:#ffd700;">
+                
+                <div style="background:rgba(0,0,0,0.5); padding:15px; border:1px solid #333; border-radius:5px; max-height:250px; overflow-y:auto;" id="qf-creator-list">
+                    </div>
+                
+                <div style="display:flex; justify-content:space-between; margin-top:15px; gap:10px;">
+                    <button class="btn secondary" onclick="window.addQuizCreatorRow()">+ ADD QUESTION</button>
+                    <button class="btn primary" style="background:#ffd700; color:#000;" onclick="window.saveCustomQuiz()">💾 SAVE & GENERATE CODE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="quiz-flashcard-modal" class="modal hidden" style="background: rgba(0,2,5,0.98);">
+        <div class="modal-content" style="background:transparent; border:none; box-shadow:none; max-width:800px; text-align:center;">
+            
+            <div style="display:flex; justify-content:space-between; color:#00e5ff; font-family:'Orbitron'; font-size:18px; margin-bottom:20px; border-bottom:2px dashed #00e5ff; padding-bottom:10px;">
+                <span id="qf-play-title">N.E.X.U.S. SIMULATION</span>
+                <span id="qf-play-progress">1 / 10</span>
+            </div>
+
+            <div class="glass-panel" style="padding: 60px 20px; border-radius: 15px; border: 2px solid #b000ff; box-shadow: 0 0 50px rgba(176,0,255,0.2); margin-bottom: 30px; position:relative; overflow:hidden;">
+                <div class="scanline-overlay"></div>
+                <h1 id="qf-play-question" style="font-size: 80px; margin:0; color:#fff; font-family:'Orbitron'; text-shadow:0 0 20px #b000ff;">5 x 5</h1>
+            </div>
+
+            <form onsubmit="window.submitQuizAnswer(); return false;">
+                <input type="text" id="qf-play-input" class="cyber-input" style="font-size:40px; text-align:center; height:80px; width:60%; border-color:#00ff41; color:#00ff41;" placeholder="?" autocomplete="off" autofocus>
+            </form>
+            
+            <p id="qf-play-feedback" style="height:20px; color:#ff0055; font-weight:bold; letter-spacing:2px; margin-top:10px;"></p>
+            
+            <div style="margin-top:30px;">
+                <button class="btn secondary" style="border-color:#ff0055; color:#ff0055;" onclick="window.abortQuiz()">⏹ ABORT DRILL</button>
+            </div>
+
+        </div>
+    </div>
 
 
                 <div id="start-modal" class="modal">
@@ -644,7 +737,7 @@
 
                 <h2 id="agent-name-display" class="agent-name">AGENT</h2>
 
-                <div id="rank-title" class="agent-rank">CADET</div>
+                <div id="rank-title" class="agent-rank">Math Challenger</div>
 
                 
 
@@ -1842,7 +1935,7 @@
 
                     <h2 id="dash-agent-name" style="margin: 5px 0; color: #fff; font-family: 'Orbitron'; font-size: 24px;">AGENT</h2>
 
-                    <h4 id="dash-rank" style="margin: 0 0 15px 0; color: #ffd700; letter-spacing: 2px;">CADET</h4>
+                    <h4 id="dash-rank" style="margin: 0 0 15px 0; color: #ffd700; letter-spacing: 2px;">MATH CHALLENGER</h4>
 
                     
 
@@ -2307,7 +2400,7 @@
 
                     <h2 id="dossier-name" style="margin: 10px 0 0 0; color: white; font-family: 'Orbitron'; font-size: 24px;">AGENT X</h2>
 
-                    <div id="dossier-rank" style="color: #ffd700; font-family: 'Rajdhani'; letter-spacing: 2px;">COMMANDER</div>
+                    <div id="dossier-rank" style="color: #ffd700; font-family: 'Rajdhani'; letter-spacing: 2px;">MATH WIZARD</div>
 
                 </div>
 
@@ -2787,6 +2880,18 @@
             </div>
         </div>
     </div>
+
+    <div id="quiz-forge-toggle-btn" class="cyber-orb-wrapper" onclick="window.openQuizForge()" style="display: none; position: fixed; right: 20px; top: 80px; z-index: 100;">
+    <div class="cyber-orb" style="border-color: #b000ff; box-shadow: 0 0 15px #b000ff; cursor: pointer;">
+        <div class="orb-ring outer-ring" style="border-color: rgba(176,0,255,0.5);"></div>
+        <div class="orb-ring inner-ring" style="border-color: #b000ff;"></div>
+        <div class="orb-core" style="background: rgba(176,0,255,0.2);">
+            <span class="orb-icon" style="font-size: 24px;">🧠</span>
+        </div>
+    </div>
+
+</div>
+</div>
 
 
 
