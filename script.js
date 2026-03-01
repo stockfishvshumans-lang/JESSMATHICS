@@ -5669,10 +5669,14 @@ window.toggleSubOps = function() {
 
 
 // ==========================================
-// ⌨️ STRICT KEYBOARD CONTROLLER (NO LETTERS ALLOWED)
+// ⌨️ STRICT KEYBOARD CONTROLLER (FIXED FOR MENUS)
 // ==========================================
 document.addEventListener("keydown", function(event) {
-    if (!state.isPlaying || state.isPaused || state.isGlobalFreeze) return;
+    if (!state.isPlaying || state.isPaused || state.isGlobalFreeze) {
+        // 🟢 FIX: Kung hindi tayo naglalaro (nasa menu tayo), PAYAGAN ANG LAHAT NG TYPING!
+        return; 
+    }
+    
     if (state.inputLocked) {
         event.preventDefault();
         event.stopPropagation();
@@ -5706,18 +5710,17 @@ document.addEventListener("keydown", function(event) {
                     input.value = "";
                 }
             } else {
-                // 🛡️ THE LETTER FILTER: Harangin ang lahat ng hindi numero o math signs!
+                // 🛡️ THE LETTER FILTER: Harangin ang lahat ng hindi numero o math signs (Sa Laban Lang!)
                 const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','-','Backspace','Delete','ArrowLeft','ArrowRight'];
-                // Kung ang pinindot ay isang character (ex: 'a', 'b') at wala sa allowed list, i-block!
                 if (event.key.length === 1 && !allowedKeys.includes(event.key)) {
                     event.preventDefault(); 
                 }
             }
         }
-        return; 
+        return; // 🟢 FIX: Kapag nasa loob ng ANY input box, wag patakbuhin ang Auto-Focus sa baba!
     }
 
-    // --- C. AUTO-FOCUS TYPING ---
+    // --- C. AUTO-FOCUS TYPING (Para sa Combat Lang) ---
     const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','-','Backspace','Delete'];
     if (allowedKeys.includes(event.key)) {
         if (input && document.activeElement !== input) {
@@ -11360,28 +11363,29 @@ document.addEventListener('click', () => {
 });
 
 
-
 // ==========================================
-// 🔮 HOLOGRAPHIC ORBS VISIBILITY MANAGER (AUTO-RADAR V2)
+// 🔮 HOLOGRAPHIC ORBS VISIBILITY MANAGER (V3 - WITH QUIZ FORGE)
 // ==========================================
 window.updateOrbsVisibility = function(forceHide = false) {
     const commsBtn = document.getElementById("comms-toggle-btn");
     const jessBtn = document.getElementById("jessbot-toggle-btn");
-    if (!commsBtn || !jessBtn) return;
+    const forgeBtn = document.getElementById("quiz-forge-toggle-btn"); // 🟢 TINAWAG NATIN ANG QUIZ ORB
 
     // 1. INSTANT HIDE OVERRIDE (For Combat)
     if (forceHide) {
-        commsBtn.style.display = "none";
-        jessBtn.style.display = "none";
+        if(commsBtn) commsBtn.style.display = "none";
+        if(jessBtn) jessBtn.style.display = "none";
+        if(forgeBtn) forgeBtn.style.display = "none";
         return;
     }
 
     // 2. COMBAT & TEACHER CHECK (Bawal umepal sa laro)
-    if (state.isPlaying || 
+    if (typeof state !== 'undefined' && (state.isPlaying || 
         document.body.classList.contains('in-combat') || 
-        document.body.classList.contains('dashboard-active')) {
-        commsBtn.style.display = "none";
-        jessBtn.style.display = "none";
+        document.body.classList.contains('dashboard-active'))) {
+        if(commsBtn) commsBtn.style.display = "none";
+        if(jessBtn) jessBtn.style.display = "none";
+        if(forgeBtn) forgeBtn.style.display = "none";
         return;
     }
 
@@ -11393,8 +11397,9 @@ window.updateOrbsVisibility = function(forceHide = false) {
     if ((bootOverlay && bootOverlay.style.display !== 'none') || 
         (introOverlay && introOverlay.style.display !== 'none') || 
         (storyOverlay && !storyOverlay.classList.contains('hidden'))) {
-        commsBtn.style.display = "none";
-        jessBtn.style.display = "none";
+        if(commsBtn) commsBtn.style.display = "none";
+        if(jessBtn) jessBtn.style.display = "none";
+        if(forgeBtn) forgeBtn.style.display = "none";
         return;
     }
 
@@ -11403,580 +11408,479 @@ window.updateOrbsVisibility = function(forceHide = false) {
     const isGuestMode = document.getElementById('my-name'); 
     
     if (profileSection && profileSection.classList.contains('hidden') && !isGuestMode) {
-        commsBtn.style.display = "none";
-        jessBtn.style.display = "none";
+        if(commsBtn) commsBtn.style.display = "none";
+        if(jessBtn) jessBtn.style.display = "none";
+        if(forgeBtn) forgeBtn.style.display = "none";
         return;
     }
 
-    // 🟢 5. NEW: SIDEBAR COLLISION CHECK (Ang mag-aayos ng overlap!)
+    // 🟢 5. SHOW THEM ON DASHBOARD!
     const commsSidebar = document.getElementById("comms-sidebar");
     const jessSidebar = document.getElementById("jessbot-sidebar");
 
-    // Kung HINDI closed ang Comms Sidebar, itago ang Comms Orb
+    // Comms Orb Logic
     if (commsSidebar && !commsSidebar.classList.contains("closed")) {
-        commsBtn.style.display = "none";
+        if(commsBtn) commsBtn.style.display = "none";
     } else {
-        commsBtn.style.display = "flex";
+        if(commsBtn) commsBtn.style.display = "flex";
     }
 
-    // Kung HINDI closed ang JessBot Sidebar, itago ang Jessbot Orb
+    // Jessbot & Quiz Forge Logic
     if (jessSidebar && !jessSidebar.classList.contains("closed")) {
-        jessBtn.style.display = "none";
+        if(jessBtn) jessBtn.style.display = "none";
+        if(forgeBtn) forgeBtn.style.display = "none"; // Itago rin ang quiz orb kung bukas ang chat ni jessbot
     } else {
-        jessBtn.style.display = "flex";
+        if(jessBtn) jessBtn.style.display = "flex";
+        if(forgeBtn) forgeBtn.style.display = "flex"; // 🟢 DITO SIYA LILITAW!
     }
 };
 
 // 🛡️ THE AUTO-WATCHER
 if (!window.orbWatcher) {
     window.orbWatcher = setInterval(() => {
-        window.updateOrbsVisibility();
+        if(typeof window.updateOrbsVisibility === 'function') window.updateOrbsVisibility();
     }, 1000); 
 }
 
-window.closeInterventionReport = function() {
-    if(window.Sound) window.Sound.click();
-    const modal = document.getElementById("intervention-report-modal");
-    if (modal) modal.classList.add("hidden");
-};
+// ==========================================================================
+// 🧠 N.E.X.U.S. QUIZ FORGE (THE LOGIC ENGINE V2)
+// ==========================================================================
 
+// Global state para sa Quiz Forge
+window.activeQuizData = [];
+window.currentQuizIndex = 0;
+window.quizScore = 0;
+window.quizMistakes = [];
 
-
-// Ito naman ang para sa Export Data button (sa Data Reports tab)
-window.saveAndExitClass = function() {
-    if(window.Sound) window.Sound.click();
-
-    if (!currentStudentData || currentStudentData.length === 0) {
-        alert("No student data to save.");
-        window.closeClassEntirely(); 
-        return;
-    }
-
-    // CSV Logic
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "RANK,AGENT NAME,TOTAL SCORE,ROUNDS PLAYED,ACCURACY,WEAKEST TOPIC,STATUS\n";
-    let sortedData = [...currentStudentData].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-
-    sortedData.forEach((s, index) => {
-        let row = [ index + 1, `"${s.name}"`, s.totalScore || 0, s.roundsPlayed || 0, (s.accuracy || 0) + "%", s.weakestLink || "None", s.status || "offline" ];
-        csvContent += row.join(",") + "\n";
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `MISSION_REPORT_${currentRoomId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // After download, close the room
-    setTimeout(() => {
-        window.closeClassEntirely();
-    }, 1000);
-};
-
-window.closeMultiplayerMenu = function() {
-    if(window.Sound) window.Sound.click();
-    document.getElementById("mp-menu-modal").classList.add("hidden");
-    document.getElementById("start-modal").classList.remove("hidden");
+// 1. MENU CONTROLS
+window.openQuizForge = function() {
+    if(window.Sound && window.Sound.click) window.Sound.click();
     
-    // Ibalik ang mga Orbs
-    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
-};
-
-window.quitFromPause = function() {
-    if(window.Sound) window.Sound.click();
-    
-    if(confirm("ABORT MISSION? Progress will be lost.")) {
-        // Itago ang pause menu para hindi maging "Ghost UI"
-        document.getElementById("pause-modal").classList.add("hidden");
-        // Gamitin ang Soft Reset natin (true = bypass double confirm)
-        window.goHome(true); 
-    }
-};
-
-window.cancelGuestMode = function() {
-    if(window.Sound) window.Sound.click();
-    
-    // Simpleng Soft Reset pabalik sa Login!
-    document.getElementById('auth-section').classList.remove('hidden');
-    document.getElementById('profile-section').classList.add('hidden');
-    
-    // I-reset ang mga tabs sa login
-    window.switchTab('login');
-    
-    // Itago muli ang main menu kung sakaling nakalabas
-    document.getElementById("start-modal").classList.add("hidden");
-};
-
-// ==========================================
-// 👨‍🏫 TEACHER DASHBOARD FIX (NO MORE NULL ERRORS)
-// ==========================================
-window.monitorClassroom = function(code) {
-    console.log("Initializing Command Center for:", code);
-    window.agentTelemetry = {};
-
-    if (roomUnsub) roomUnsub(); // Pigilan ang pagdoble ng listener
-
-    roomUnsub = onSnapshot(doc(db, "rooms", code), (roomSnap) => {
-        if(!roomSnap.exists()) return;
-        const roomData = roomSnap.data();
-        
-        const awardingModal = document.getElementById('awarding-modal'); 
-        // 🟢 FIX: Tama na ang ID na hinahanap natin kaya hindi na mag-nu-null!
-        const tabs = document.getElementById('dash-tabs-bar'); 
-        
-        const startBtn = document.getElementById('btn-start-round');
-        const stopBtn = document.getElementById('btn-stop-round');
-        const freezeBtn = document.getElementById('btn-freeze-toggle');
-        const statusEl = document.getElementById('dash-status');
-
-        if (typeof window.lastRoomStatus === 'undefined') window.lastRoomStatus = 'waiting';
-
-        // --- 1. WAITING (Lobby) ---
-        if (roomData.status === 'waiting') {
-            if (window.lastRoomStatus !== 'waiting') window.switchDashTab('roster'); 
-            
-            if(tabs) tabs.style.display = 'none'; // Ligtas na ito ngayon!
-            
-            if(startBtn) {
-                startBtn.innerText = "▶ START ROUND 1";
-                startBtn.disabled = false;
-                startBtn.style.opacity = "1";
-                startBtn.classList.remove('hidden');
-                startBtn.onclick = window.adminStartRound;
-            }
-            if(freezeBtn) freezeBtn.classList.add('hidden'); 
-            if(stopBtn) stopBtn.classList.add('hidden');   
-            if(statusEl) statusEl.innerText = "STATUS: STANDBY";
-            window.lastRoomStatus = 'waiting';
-        } 
-        // --- 2. PLAYING (Game Active) ---
-        else if (roomData.status === 'playing') {
-            if(tabs) tabs.style.display = 'flex';
-            if(awardingModal) awardingModal.classList.add('hidden');
-
-            if (window.lastRoomStatus === 'waiting' || window.lastRoomStatus === 'round_ended') {
-                window.switchDashTab('podium');
-                document.querySelectorAll('#dash-tabs-bar .tab-btn').forEach(b => b.classList.remove('active'));
-                const podiumBtn = document.querySelector("#dash-tabs-bar .tab-btn:nth-child(3)"); 
-                if(podiumBtn) podiumBtn.classList.add('active');
-            }
-
-            if(startBtn) {
-                startBtn.classList.remove('hidden');
-                startBtn.innerText = `⏳ ROUND ${roomData.currentRound} / ${roomData.maxRounds}`;
-                startBtn.disabled = true; 
-                startBtn.style.opacity = "0.5";
-                startBtn.classList.remove('pulse-btn');
-            }
-            if(freezeBtn) {
-                freezeBtn.classList.remove('hidden');
-                freezeBtn.innerText = "❄️ FREEZE";
-                freezeBtn.className = "btn secondary"; 
-            }
-            if(stopBtn) {
-                stopBtn.classList.remove('hidden');
-                stopBtn.innerText = "⏹ STOP ROUND";
-                stopBtn.className = "btn danger";
-                stopBtn.onclick = window.adminForceStop;
-            }
-            if(statusEl) statusEl.innerText = "STATUS: LIVE COMBAT";
-            window.lastRoomStatus = 'playing';
-        }
-        // --- 3. FROZEN ---
-        else if (roomData.status === 'frozen') {
-            if(freezeBtn) {
-                freezeBtn.innerText = "▶ RESUME";
-                freezeBtn.className = "btn primary"; 
-            }
-            if(statusEl) statusEl.innerText = "STATUS: PAUSED";
-            window.lastRoomStatus = 'frozen';
-        }
-        // --- 4. ROUND ENDED ---
-        else if (roomData.status === 'round_ended') {
-            const nextRound = (parseInt(roomData.currentRound) || 0) + 1;
-            if(startBtn) {
-                startBtn.classList.remove('hidden');
-                startBtn.disabled = false;
-                startBtn.style.opacity = "1";
-                startBtn.classList.remove('pulse-btn');
-            }
-            if(freezeBtn) freezeBtn.classList.add('hidden');
-            if(stopBtn) {
-                stopBtn.classList.remove('hidden');
-                stopBtn.innerText = "❌ END CLASS";
-                stopBtn.className = "btn danger";
-                stopBtn.onclick = window.adminForceStop;
-            }
-
-            if (!isAutoStarting && typeof intermissionSeconds !== 'undefined') {
-                 if(intermissionSeconds <= 0) intermissionSeconds = 10;
-                 window.startIntermissionCountdown(nextRound);
-            }
-            if(statusEl) statusEl.innerText = "STATUS: INTERMISSION";
-            window.lastRoomStatus = 'round_ended';
-        }
-        // --- 5. FINISHED ---
-        else if (roomData.status === 'finished') {
-             if(awardingModal) awardingModal.classList.remove('hidden');
-             if(window.generateClassDiagnostics) window.generateClassDiagnostics();
-             window.lastRoomStatus = 'finished';
-        }
-    });
-
-    // Student Telemetry Listener
-    const q = query(collection(db, "rooms", code, "students"));
-    if(dashboardUnsub) dashboardUnsub(); 
-    let renderTimeout;
-    
-    dashboardUnsub = onSnapshot(q, (snapshot) => {
-        currentStudentData = [];
-        snapshot.forEach(doc => { 
-            let sData = doc.data();
-            sData.id = doc.id; 
-            currentStudentData.push(sData); 
-        });
-        
-        currentStudentData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-        
-        clearTimeout(renderTimeout);
-        renderTimeout = setTimeout(() => {
-            const activeRoster = document.getElementById('view-roster');
-            const activeGrid = document.getElementById('view-grid');
-            const activePodium = document.getElementById('view-podium');
-            const activeReports = document.getElementById('view-reports');
-
-            try { 
-                if(activePodium && !activePodium.classList.contains('hidden') && window.updatePodiumView) window.updatePodiumView(); 
-                if(activeGrid && !activeGrid.classList.contains('hidden') && window.updateSpyView) window.updateSpyView(); 
-                if(activeReports && !activeReports.classList.contains('hidden') && window.updateReportView) window.updateReportView(); 
-                if(activeRoster && !activeRoster.classList.contains('hidden') && window.updateRosterView) window.updateRosterView(); 
-            } catch(e) { console.error("Render update error:", e); }
-        }, 300); 
-    });
-};
-
-
-
-
-// ==========================================
-// 👨‍🏫 TEACHER EXITS (ROUTES DIRECTLY TO GOHOME)
-// ==========================================
-window.closeClassEntirely = function() {
-    if(window.Sound) window.Sound.click();
-    const exitBtn = document.getElementById('btn-exit-dash');
-    if(exitBtn) { exitBtn.disabled = true; exitBtn.innerText = "EXITING..."; }
-    
-    if (currentRoomId) {
-        updateDoc(doc(db, "rooms", currentRoomId), { status: 'archived' }).then(() => {
-            window.goHome(true); 
-        }).catch(() => { window.goHome(true); }); 
-    } else {
-        window.goHome(true);
-    }
-};
-
-window.saveAndExitClass = function() {
-    if(window.Sound) window.Sound.click();
-    if (!currentStudentData || currentStudentData.length === 0) {
-        window.closeClassEntirely(); 
-        return;
-    }
-
-    if (state.customTimeLimit === 180) { 
-        let opTag = getOperationTag(state.selectedOps);
-        let maxRoundsPlayed = Math.max(...currentStudentData.map(s => s.roundsPlayed || 1));
-        currentStudentData.forEach(async (s) => {
-            let avgScore = Math.floor((s.totalScore || 0) / maxRoundsPlayed);
-            if (avgScore > 0) {
-                try { await addDoc(collection(db, "scores"), { name: s.name, score: avgScore, mode: 'classroom', operation: opTag, date: Date.now() }); } catch(e) {}
-            }
-        });
-    }
-
-    let csvContent = "data:text/csv;charset=utf-8,RANK,AGENT NAME,TOTAL SCORE,ROUNDS PLAYED,ACCURACY,WEAKEST TOPIC,STATUS\n";
-    let sortedData = [...currentStudentData].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-    sortedData.forEach((s, index) => {
-        let row = [ index + 1, `"${s.name}"`, s.totalScore || 0, s.roundsPlayed || 0, (s.accuracy || 0) + "%", s.weakestLink || "None", s.status || "offline" ];
-        csvContent += row.join(",") + "\n";
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `MISSION_REPORT_${currentRoomId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => { window.closeClassEntirely(); }, 1000);
-};
-
-
-
-// ==========================================
-// 🛡️ UNIVERSAL MENU RESURRECTION (Para walang ma-stuck sa Void)
-// ==========================================
-window.showMainDashboard = function() {
-    if(window.Sound) window.Sound.click();
-    
-    // I-brute force ang paglitaw ng menu
+    // Itago muna ang Main Menu
     const startModal = document.getElementById("start-modal");
-    if(startModal) {
-        startModal.classList.remove("hidden");
-        startModal.style.setProperty('display', 'flex', 'important'); 
-        startModal.style.setProperty('z-index', '100', 'important');
-        startModal.style.setProperty('opacity', '1', 'important');
-        startModal.style.setProperty('visibility', 'visible', 'important');
+    if(startModal) startModal.classList.add("hidden");
+    
+    // Ipakita ang Quiz Menu Modal
+    const menuModal = document.getElementById("quiz-forge-menu-modal");
+    if(menuModal) {
+        menuModal.classList.remove("hidden");
+        menuModal.style.setProperty('display', 'flex', 'important');
+        menuModal.style.setProperty('z-index', '2147483647', 'important');
     }
     
-    // I-reset ang mga Orbs base sa menu
-    if(window.updateOrbsVisibility) window.updateOrbsVisibility();
+    // Setup empty row for creator if empty
+    const list = document.getElementById("qf-creator-list");
+    if(list && list.children.length === 0) {
+        window.addQuizCreatorRow(); 
+    }
 };
 
-// 🟢 I-UPDATE ANG LAHAT NG "CLOSE" BUTTONS PARA GUMAMIT NG UNIVERSAL MENU
-window.cancelMission = function() {
-    document.getElementById("mission-config-modal").classList.add("hidden");
-    window.showMainDashboard();
-};
-window.closeCampaignMap = function() {
-    document.getElementById("campaign-modal").classList.add("hidden");
-    window.showMainDashboard();
-};
-window.closeRewardModal = function() {
-    document.getElementById("reward-modal").classList.add("hidden");
-    window.openCampaignMap(); // Balik sa Map pagka-claim
-};
-window.closeShop = function() {
-    document.getElementById("shop-modal").classList.add("hidden");
-    window.showMainDashboard();
-};
-window.closeLeaderboard = function() {
-    document.getElementById("leaderboard-modal").classList.add("hidden");
-    window.showMainDashboard();
-};
-window.closeMultiplayerMenu = function() {
-    document.getElementById("mp-menu-modal").classList.add("hidden");
-    window.showMainDashboard();
-};
-
-// ==========================================
-// ⚔️ MULTIPLAYER LOBBY EXITS (VOID FIX)
-// ==========================================
-window.returnToLobby = async function() {
-    if(window.Sound) window.Sound.click();
+window.closeQuizForgeMenu = function() {
+    if(window.Sound && window.Sound.click) window.Sound.click();
+    const menuModal = document.getElementById("quiz-forge-menu-modal");
+    if(menuModal) menuModal.classList.add("hidden");
     
-    // Itago ang mga nakaharang na modals
-    const modalsToHide = ["win-modal", "report-modal", "pause-modal", "class-curtain", "game-wrapper"];
-    modalsToHide.forEach(id => {
-        let el = document.getElementById(id);
-        if(el) {
-            el.classList.add("hidden");
-            if (id === 'game-wrapper') el.style.setProperty('display', 'none', 'important');
-        }
+    // 🟢 THE FIX: Gumamit na rin ng Hard Reload Protocol (Warp Door)
+    if (typeof window.goHome === "function") {
+        window.goHome(true);
+    } else {
+        window.location.reload();
+    }
+};
+
+window.switchQuizTab = function(tab, event) {
+    if(window.Sound && window.Sound.click) window.Sound.click();
+    
+    // Hide all tabs
+    document.querySelectorAll('.quiz-forge-tab').forEach(el => {
+        el.classList.add('hidden');
+        el.style.display = 'none';
     });
     
-    document.body.className = ''; // Linisin ang body classes
-    if(typeof window.cleanupGame === 'function') window.cleanupGame(); 
-
-    if (typeof isHost !== 'undefined' && isHost && currentRoomId) { 
-        await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'waiting' }); 
+    // Remove active class from buttons
+    document.querySelectorAll('#quiz-forge-menu-modal .tab-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+    
+    // Show selected tab
+    const targetTab = document.getElementById(`quiz-tab-${tab}`);
+    if(targetTab) {
+        targetTab.classList.remove('hidden');
+        targetTab.style.display = 'block';
     }
     
-    if (typeof currentRoomId !== 'undefined' && currentRoomId) {
-        if(window.Sound) window.Sound.playBGM('menu'); 
-        if(typeof window.enterLobbyUI === 'function') window.enterLobbyUI(currentRoomId);
-        
-        // 🟢 FORCE LOBBY TO FRONT
-        const lobbyModal = document.getElementById("lobby-modal");
-        if (lobbyModal) {
-            lobbyModal.classList.remove("hidden");
-            lobbyModal.style.setProperty('z-index', '2147483647', 'important');
-            lobbyModal.style.setProperty('display', 'flex', 'important');
-        }
-    } else {
-        window.goHome(true); 
+    if(event && event.target) {
+        event.target.classList.add('active');
     }
 };
 
-// ==========================================
-// 💀 PERFECTED GAME OVER LOGIC (INSTANT RETRY)
-// ==========================================
-window.gameOver = function() {
-    if (state.matchConcluded) return; 
-    state.matchConcluded = true;
-    document.body.className = ''; 
+// 2. AUTO-GENERATOR ALGORITHM (WITH MULTIPLICATION FIX)
+window.startAutoQuiz = function() {
+    if(window.Sound && window.Sound.powerup) window.Sound.powerup();
     
-    if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
-    if (state.gameTimer) clearInterval(state.gameTimer);
-    if (window.Sound) window.Sound.stopBGM();
+    const topicEl = document.querySelector('input[name="qf-topic"]:checked');
+    const topic = topicEl ? topicEl.value : 'integers';
+    
+    const digits = parseInt(document.getElementById("qf-digits").value) || 1;
+    const count = parseInt(document.getElementById("qf-count").value) || 10;
+    
+    let ops = [];
+    if(document.getElementById("qf-op-add") && document.getElementById("qf-op-add").checked) ops.push('+');
+    if(document.getElementById("qf-op-sub") && document.getElementById("qf-op-sub").checked) ops.push('-');
+    if(document.getElementById("qf-op-mul") && document.getElementById("qf-op-mul").checked) ops.push('x');
+    if(document.getElementById("qf-op-div") && document.getElementById("qf-op-div").checked) ops.push('÷');
 
-    state.isPlaying = false; 
-    if(window.inputField) window.inputField.blur();
-
-    // --- MULTIPLAYER DEFEAT ---
-    if (state.gameMode === 'vs' || state.gameMode === 'party') {
-        if (socket && currentRoomId) {
-            state.health = 0; 
-            if (state.gameMode === 'vs') {
-                socket.emit('player_died', { room: currentRoomId });
-                socket.emit('send_vs_state', { room: currentRoomId, state: { meteors: [], lasers: [], health: 0, score: state.score } });
-            }
-        }
-        const winModal = document.getElementById("win-modal");
-        if(winModal) {
-            winModal.classList.remove("hidden");
-            // Hilahin sa harap ang Defeat Screen
-            winModal.style.setProperty('z-index', '2147483647', 'important');
-            winModal.style.setProperty('display', 'flex', 'important');
-
-            const title = winModal.querySelector("h1");
-            const sub = winModal.querySelector(".subtitle");
-            const content = winModal.querySelector(".modal-content");
-            
-            if(title) { title.innerText = "DEFEAT"; title.style.color = "#ff0055"; title.style.textShadow = "0 0 20px #ff0055"; }
-            if(sub) sub.innerText = state.gameMode === 'party' ? "SQUAD WIPED OUT" : "SYSTEM CRITICAL";
-            if(content) { content.style.borderColor = "#ff0055"; content.style.boxShadow = "0 0 30px #ff0055"; }
-            
-            const playAgainBtn = winModal.querySelector(".secondary");
-            if(playAgainBtn) {
-                playAgainBtn.style.display = "block";
-                playAgainBtn.innerText = "RETURN TO LOBBY";
-                playAgainBtn.onclick = () => window.returnToLobby();
-            }
-        }
-        return; 
+    if(ops.length === 0) {
+        alert("COMMANDER: Select at least one mathematical operation!");
+        return;
     }
 
-    // --- SOLO / CAMPAIGN DEFEAT ---
+    window.activeQuizData = [];
+    
+    // Number Generator helper
+    const getNum = (dig) => {
+        let min = dig === 1 ? 1 : Math.pow(10, dig - 1);
+        let max = Math.pow(10, dig) - 1;
+        let num = Math.floor(Math.random() * (max - min + 1)) + min;
+        if (topic === 'integers' && Math.random() < 0.3) num *= -1; // Negative chance for integers
+        return num;
+    };
+
+    for(let i=0; i<count; i++) {
+        let op = ops[Math.floor(Math.random() * ops.length)];
+        let q, a;
+
+        if (topic === 'algebra') {
+            let x = getNum(1); // 1-digit x para hindi mahirap compute-in
+            let c = getNum(digits); // Constant base on digits selected
+            
+            if (op === '+') { q = `x + ${c} = ${x+c}`; a = x; }
+            if (op === '-') { q = `x - ${c} = ${x-c}`; a = x; }
+            if (op === 'x') { let co = getNum(1)+1; q = `${co}x = ${co*x}`; a = x; }
+            if (op === '÷') { q = `x ÷ 2 = ${x/2}`; a = x; } 
+        } else {
+            let n1 = getNum(digits);
+            let n2 = getNum(digits);
+            
+            if (op === '+') { 
+                q = `${n1} + ${n2}`; a = n1 + n2; 
+            }
+            if (op === '-') { 
+                if (n1 < n2 && topic !== 'integers') { let temp=n1; n1=n2; n2=temp; } 
+                q = `${n1} - ${n2}`; a = n1 - n2; 
+            }
+            if (op === 'x') { 
+                // 🟢 REQUESTED FIX: Multiplication logic (1 digit multiplier lang)
+                // Kahit 3 digits pa pinili nila, yung pang-multiply (n2) is laging 1 digit!
+                n2 = getNum(1); 
+                q = `${n1} x ${n2}`; a = n1 * n2; 
+            }
+            if (op === '÷') {
+                let ans = getNum(digits);
+                n2 = getNum(1) + 1; // 1-digit divisor
+                n1 = ans * n2;
+                q = `${n1} ÷ ${n2}`; a = ans;
+            }
+        }
+        window.activeQuizData.push({ q: q, a: a.toString() });
+    }
+
+    const titleEl = document.getElementById("qf-play-title");
+    if(titleEl) titleEl.innerText = "AUTO-GENERATED DRILL";
+    window.launchQuizUI();
+};
+
+// 3. GAMEPLAY ENGINE (The Flashcard Loop)
+window.launchQuizUI = function() {
+    const menuModal = document.getElementById("quiz-forge-menu-modal");
+    if(menuModal) menuModal.classList.add("hidden");
+    
+    const flashModal = document.getElementById("quiz-flashcard-modal");
+    if(flashModal) {
+        flashModal.classList.remove("hidden");
+        flashModal.style.setProperty('display', 'flex', 'important');
+        flashModal.style.setProperty('z-index', '2147483647', 'important');
+    }
+    
+    window.currentQuizIndex = 0;
+    window.quizScore = 0;
+    window.quizMistakes = [];
+    
+    window.renderCurrentQuestion();
+};
+
+window.renderCurrentQuestion = function() {
+    if (window.currentQuizIndex >= window.activeQuizData.length) {
+        return window.finishQuiz();
+    }
+    
+    let currentQ = window.activeQuizData[window.currentQuizIndex];
+    
+    const progEl = document.getElementById("qf-play-progress");
+    if(progEl) progEl.innerText = `${window.currentQuizIndex + 1} / ${window.activeQuizData.length}`;
+    
+    const qEl = document.getElementById("qf-play-question");
+    if(qEl) qEl.innerText = currentQ.q;
+    
+    const input = document.getElementById("qf-play-input");
+    if(input) {
+        input.value = "";
+        input.disabled = false;
+        input.focus();
+    }
+    
+    const feedbackEl = document.getElementById("qf-play-feedback");
+    if(feedbackEl) feedbackEl.innerText = "";
+};
+
+window.submitQuizAnswer = function() {
+    const input = document.getElementById("qf-play-input");
+    if(!input) return;
+    
+    let userAns = input.value.trim().toLowerCase(); 
+    if (userAns === "") return;
+
+    let currentData = window.activeQuizData[window.currentQuizIndex];
+    let correctAns = currentData.a.toString().toLowerCase();
+    
+    const feedbackEl = document.getElementById("qf-play-feedback");
+
+    if (userAns === correctAns) {
+        if(window.Sound && window.Sound.laser) window.Sound.laser();
+        window.quizScore++;
+        if(feedbackEl) {
+            feedbackEl.style.color = "#00ff41";
+            feedbackEl.innerText = "TARGET DESTROYED!";
+        }
+    } else {
+        if(window.Sound && window.Sound.error) window.Sound.error();
+        if(window.triggerDamageGlitch) window.triggerDamageGlitch();
+        window.quizMistakes.push({ q: currentData.q, a: currentData.a, wrong: userAns, type: 'wrong' });
+        
+        if(feedbackEl) {
+            feedbackEl.style.color = "#ff0055";
+            feedbackEl.innerText = `MISS! CORRECT: ${currentData.a}`;
+        }
+    }
+
+    input.disabled = true; // Lock briefly so they don't spam
+    
+    setTimeout(() => {
+        window.currentQuizIndex++;
+        window.renderCurrentQuestion();
+    }, 1000); 
+};
+
+window.abortQuiz = function() {
+    if(window.Sound && window.Sound.click) window.Sound.click();
+    
+    if(confirm("ABORT DRILL? No data will be saved.")) {
+        // Itago agad ang Flashcard Modal
+        const flashModal = document.getElementById("quiz-flashcard-modal");
+        if(flashModal) {
+            flashModal.classList.add("hidden");
+            flashModal.style.setProperty('display', 'none', 'important');
+        }
+        
+        // 🟢 THE FIX: Tawagin ang Master Reload Protocol (Warp Door + Refresh)
+        if (typeof window.goHome === "function") {
+            window.goHome(true); 
+        } else {
+            window.location.reload(); // Failsafe
+        }
+    }
+};
+
+window.finishQuiz = function() {
+    if(window.Sound && window.Sound.powerup) window.Sound.powerup();
+    
+    const flashModal = document.getElementById("quiz-flashcard-modal");
+    if(flashModal) flashModal.classList.add("hidden");
+    
+    // Transfer data to the existing Report System!
+    if(typeof state !== 'undefined') {
+        state.score = window.quizScore * 50; 
+        state.mistakes = window.quizMistakes;
+        state.gameMode = 'quiz'; // 🟢 SET TO 'quiz' PARA ALAM NG SYSTEM NA NASA FLASHCARDS TAYO
+        
+        state.gameHistory = window.activeQuizData.map(item => ({
+            q: item.q,
+            a: item.a,
+            status: window.quizMistakes.some(m => m.q === item.q) ? 'wrong' : 'correct'
+        }));
+        state.maxCombo = window.quizScore; 
+    }
+    
     const reportModal = document.getElementById("report-modal");
     if(reportModal) {
         reportModal.classList.remove("hidden");
-        // Hilahin sa harap ang Report Screen
         reportModal.style.setProperty('z-index', '2147483647', 'important');
         reportModal.style.setProperty('display', 'flex', 'important');
-    }
-
-    const scoreEl = document.getElementById("rep-score");
-    if(scoreEl) scoreEl.innerText = state.score;
-
-    if(window.renderTacticalLog) window.renderTacticalLog();
-    if(window.generateMissionDebrief) window.generateMissionDebrief();
-    if(window.generateTacticalReport) window.generateTacticalReport();
-    if(window.saveMatchRecord) window.saveMatchRecord();
-
-    if (reportModal) {
-        const aiBtn = reportModal.querySelector('button[onclick*="startAITraining"]');
+        
+        // 🟢 FIX: THE SMART RETRY BUTTON LOGIC
         const retryBtn = reportModal.querySelector('button[onclick*="startSolo"]');
         const homeBtn = reportModal.querySelector('button[onclick*="goHome"]');
-        
-        if(homeBtn) {
-            homeBtn.onclick = function() {
+        const aiBtn = reportModal.querySelector('button[onclick*="startAITraining"]');
+
+        // Setup Retry Button para mag-loop back sa mismong Quiz!
+        if (retryBtn) {
+            retryBtn.style.display = 'block';
+            retryBtn.innerText = "🔄 RETRY QUIZ";
+            retryBtn.onclick = function() {
+                if(window.Sound && window.Sound.click) window.Sound.click();
                 reportModal.classList.add("hidden");
-                window.goHome(true); 
+                reportModal.style.setProperty('display', 'none', 'important');
+                
+                // INSTANT RESTART NG QUIZ!
+                window.launchQuizUI();
             };
         }
+
+        // Setup Home Button
+        if (homeBtn) {
+            homeBtn.style.display = 'block';
+            homeBtn.onclick = function() {
+                reportModal.classList.add("hidden");
+                window.goHome(true); // Tatawagin ang Hard Reload
+            };
+        }
+
+        // Payagan ang AI Training galing sa Quiz
+        if (aiBtn) aiBtn.style.display = 'block';
+    }
+    
+    const repScore = document.getElementById("rep-score");
+    if(repScore) repScore.innerText = typeof state !== 'undefined' ? state.score : 0;
+
+    if(typeof window.renderTacticalLog === 'function') window.renderTacticalLog();
+    if(typeof window.generateMissionDebrief === 'function') window.generateMissionDebrief();
+    if(typeof window.saveMatchRecord === 'function') window.saveMatchRecord();
+};
+
+
+// 4. TEACHER CUSTOM CREATOR LOGIC (AAA REDESIGN)
+window.addQuizCreatorRow = function() {
+    const list = document.getElementById("qf-creator-list");
+    if(!list) return;
+    
+    if(window.Sound && window.Sound.click) window.Sound.click();
+
+    const div = document.createElement("div");
+    div.className = "creator-row";
+    // Mala-Holographic Data Block Design
+    div.style.cssText = "background: rgba(0, 229, 255, 0.05); border: 1px solid #004455; padding: 15px; margin-bottom: 12px; border-radius: 8px; display: flex; gap: 15px; align-items: center; box-shadow: 0 0 10px rgba(0,0,0,0.5);";
+    
+    div.innerHTML = `
+        <div class="row-num" style="color: #00e5ff; font-family: 'Orbitron'; font-size: 20px; font-weight: bold; width: 30px; text-align: center; text-shadow: 0 0 10px #00e5ff;"></div>
         
-        if (state.gameMode === 'classroom') {
-            if(aiBtn) aiBtn.style.display = 'none';
-            if(homeBtn) homeBtn.style.display = 'none'; 
-            if(retryBtn) retryBtn.style.display = 'none'; 
-            if(typeof window.reportProgress === 'function') window.reportProgress(true);
+        <div style="flex: 2;">
+            <label style="font-size: 10px; color: #00e5ff; display: block; margin-bottom: 5px; letter-spacing: 1px;">TARGET EQUATION (Use 'x' for Algebra)</label>
+            <input type="text" class="cyber-input q-input" placeholder="e.g. 3x + 5 = 20" style="width: 100%; font-size: 18px; padding: 10px; border: 1px solid #00e5ff; background: #000; color: #fff; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        
+        <div style="flex: 1;">
+            <label style="font-size: 10px; color: #ffd700; display: block; margin-bottom: 5px; letter-spacing: 1px;">KEY ANSWER</label>
+            <input type="text" class="cyber-input a-input" placeholder="e.g. 5" style="width: 100%; font-size: 18px; padding: 10px; border: 1px solid #ffd700; background: #000; color: #ffd700; text-align: center; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        
+        <button class="btn text-only" style="color: #ff0055; font-size: 24px; padding: 0 10px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="window.removeQuizRow(this)" title="Delete Row">✖</button>
+    `;
+    
+    list.appendChild(div);
+    window.updateQuizRowNumbers();
+};
+
+window.removeQuizRow = function(btn) {
+    if(window.Sound && window.Sound.error) window.Sound.error();
+    btn.parentElement.remove();
+    window.updateQuizRowNumbers();
+};
+
+window.updateQuizRowNumbers = function() {
+    const list = document.getElementById("qf-creator-list");
+    if(!list) return;
+    const rows = list.querySelectorAll('.creator-row');
+    rows.forEach((row, index) => {
+        row.querySelector('.row-num').innerText = index + 1;
+    });
+};
+
+window.saveCustomQuiz = async function() {
+    if(typeof currentUser === 'undefined' || !currentUser || typeof db === 'undefined' || !db) {
+        return alert("System Offline. Cannot connect to database.");
+    }
+    
+    if(window.Sound && window.Sound.click) window.Sound.click();
+
+    const titleEl = document.getElementById("qf-create-title");
+    const title = titleEl ? titleEl.value.trim() : "";
+    if(!title) return alert("COMMANDER: Please enter a Quiz Title.");
+    
+    const list = document.getElementById("qf-creator-list");
+    if(!list) return;
+    
+    const rows = list.children;
+    let customData = [];
+    
+    // Loop through all inputs and save
+    for(let i=0; i<rows.length; i++) {
+        let qEl = rows[i].querySelector(".q-input");
+        let aEl = rows[i].querySelector(".a-input");
+        if(qEl && aEl) {
+            let q = qEl.value.trim();
+            let a = aEl.value.trim();
+            if(q && a) customData.push({ q: q, a: a });
+        }
+    }
+    
+    if(customData.length === 0) return alert("ERROR: Add at least 1 completed question and answer.");
+    
+    const code = "QUIZ-" + Math.floor(1000 + Math.random() * 9000);
+    
+    try {
+        const btn = document.querySelector("#quiz-tab-create .primary");
+        if(btn) btn.innerText = "UPLOADING...";
+
+        await setDoc(doc(db, "custom_quizzes", code), {
+            title: title,
+            author: (typeof myName !== 'undefined' ? myName : currentUser.username),
+            uid: currentUser.uid,
+            questions: customData,
+            createdAt: Date.now()
+        });
+        
+        if(window.Sound && window.Sound.powerup) window.Sound.powerup();
+        alert(`[ DEPLOYMENT SUCCESS ]\n\nShare this code with your agents to start the drill:\n\n👉 ${code}`);
+        
+        if(btn) btn.innerText = "💾 SAVE & GENERATE CODE";
+        window.closeQuizForgeMenu();
+    } catch(e) {
+        alert("Error saving: " + e.message);
+    }
+};
+
+window.joinCustomQuiz = async function() {
+    const codeEl = document.getElementById("qf-join-code");
+    if(!codeEl) return;
+    const code = codeEl.value.trim().toUpperCase();
+    if(!code) return;
+    
+    if(typeof db === 'undefined' || !db) return alert("Database offline.");
+    
+    try {
+        const snap = await getDoc(doc(db, "custom_quizzes", code));
+        if (snap.exists()) {
+            let data = snap.data();
+            window.activeQuizData = data.questions;
+            
+            const titleEl = document.getElementById("qf-play-title");
+            if(titleEl) titleEl.innerText = data.title.toUpperCase();
+            
+            window.launchQuizUI();
         } else {
-            if(aiBtn) aiBtn.style.display = 'block'; 
-            if(retryBtn) { 
-                retryBtn.innerText = "🔄 RETRY MISSION"; 
-                retryBtn.onclick = function() { 
-                    if(window.Sound) window.Sound.click();
-                    reportModal.classList.add("hidden"); 
-                    reportModal.style.setProperty('display', 'none', 'important');
-                    
-                    // 🟢 FIX: INSTANT RESTART INSTEAD OF OPENING MENUS!
-                    if (state.gameMode === 'campaign') {
-                        window.startCampaignLevel(state.currentCampaignLevel);
-                    } else {
-                        if(typeof startGameLogic === 'function') {
-                            startGameLogic();
-                        } else {
-                            window.goHome(true); 
-                        }
-                    }
-                }; 
-                retryBtn.disabled = false;
-            }
+            alert("No quiz found with that code.");
         }
+    } catch(e) {
+        alert("Connection error.");
     }
 };
-
-// ==========================================
-// 🏆 PERFECTED GAME VICTORY LOGIC (INSTANT RETRY)
-// ==========================================
-window.gameVictory = function(reason) {
-    if (state.matchConcluded) return; 
-    state.matchConcluded = true;
-    document.body.className = ''; 
-
-    state.isPlaying = false; 
-    if(window.inputField) window.inputField.blur();
-    if(window.Sound) window.Sound.powerup(); 
-    
-    const winModal = document.getElementById("win-modal");
-    const winTitle = winModal.querySelector("h1");
-    const winSub = winModal.querySelector(".subtitle");
-    const winContent = winModal.querySelector(".modal-content");
-
-    winModal.classList.remove("hidden"); 
-    winModal.style.setProperty('z-index', '2147483647', 'important');
-    winModal.style.setProperty('display', 'flex', 'important');
-    
-    document.getElementById("win-score").innerText = state.score;
-
-    winTitle.innerText = "VICTORY!";
-    winTitle.style.color = "#00ff41"; 
-    winTitle.style.textShadow = "0 0 20px #00ff41";
-    winSub.innerText = reason || "OPPONENT ELIMINATED";
-    winSub.style.color = "#fff";
-    winContent.style.borderColor = "#00ff41";
-    winContent.style.boxShadow = "0 0 30px #00ff41";
-
-    const playAgainBtn = winModal.querySelector(".secondary");
-    
-    if (state.gameMode === 'vs' || state.gameMode === 'party') {
-        if(playAgainBtn) {
-            playAgainBtn.style.display = "block";
-            playAgainBtn.innerText = "RETURN TO LOBBY";
-            playAgainBtn.onclick = () => window.returnToLobby();
-        }
-    } else if (state.gameMode === 'campaign') {
-        if(playAgainBtn) {
-            playAgainBtn.style.display = "block";
-            playAgainBtn.innerText = "CONTINUE ❯";
-            playAgainBtn.onclick = () => {
-                if(window.Sound) window.Sound.click();
-                winModal.classList.add("hidden");
-                winModal.style.display = 'none';
-                window.proceedCampaignVictory(); 
-            }; 
-        }
-    } else {
-        if(playAgainBtn) {
-            playAgainBtn.style.display = "block";
-            playAgainBtn.innerText = "PLAY AGAIN";
-            playAgainBtn.onclick = () => {
-                if(window.Sound) window.Sound.click();
-                winModal.classList.add("hidden");
-                winModal.style.display = 'none';
-                
-                // 🟢 FIX: INSTANT RESTART
-                if(typeof startGameLogic === 'function') {
-                    startGameLogic();
-                } else {
-                    window.goHome(true); 
-                }
-            }; 
-        }
-    }
-};
-
