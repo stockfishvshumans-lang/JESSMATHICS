@@ -14,6 +14,28 @@ const firebaseConfig = {
     measurementId: "G-QHN9HSRZ6K"
 };
 
+// ==========================================
+// 📺 FULLSCREEN CONTROLLER
+// ==========================================
+window.toggleFullScreen = function() {
+    if(window.Sound && window.Sound.click) window.Sound.click();
+    
+    const btn = document.getElementById('fullscreen-btn');
+    
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+            if(btn) btn.innerText = ">< EXIT FULLSCREEN";
+        }).catch(err => {
+            console.log(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+            if(btn) btn.innerText = "[ ] ENTER FULLSCREEN";
+        }
+    }
+};
+
 
 
 let db, auth;
@@ -2589,8 +2611,13 @@ function handleMiss(val, meteorObj = null) {
     }
 
     if (state.gameMode === 'classroom') { 
-        triggerInputLock(); 
+        // Tanggalin ang lock para makabawi agad ang bata
         state.score = Math.max(0, state.score - 10); 
+        
+        // Mag-flash lang ng red screen mabilis para alam nilang mali
+        window.triggerDamageGlitch(); 
+        if(window.Sound) window.Sound.error();
+
         updateHUD(); 
         return; 
     }
@@ -2696,14 +2723,7 @@ function handleBossHit(m, idx) {
     }
 }
 
-function handleSupplyCrate(m) {
-    window.Sound.powerup(); let roll = Math.random();
-    if (roll < 0.25) { state.health = Math.min(100, state.health + 10); state.floatingTexts.push({x:m.x, y:m.y, text:"HP +10", color:"#00e5ff", life:1.5}); } 
-    else if (roll < 0.50) { state.coins += 30; state.floatingTexts.push({x:m.x, y:m.y, text:"COINS +30", color:"#fca311", life:1.5}); } 
-    else if (roll < 0.75) { triggerSlowMo(true); state.floatingTexts.push({x:m.x, y:m.y, text:"FREEZE!", color:"white", life:1.5}); } 
-    else { triggerEMP(true); state.floatingTexts.push({x:m.x, y:m.y, text:"MINI NUKE", color:"orange", life:1.5}); }
-    createParticles(m.x, m.y, "gold", 30);
-}
+
 
 function applyRewards() {
     let xpGain = 10; 
@@ -2808,27 +2828,124 @@ function triggerLevelUpVisuals() {
     updateHUD(); 
 }
 
-function triggerEMP(isFree, fromSocket = false) {
-    if (!isFree) { if (state.coins < 100) { window.Sound.error(); window.Sound.speak("Insufficient Funds"); return; } state.coins -= 100; }
-    window.Sound.nuke();
-    if(!fromSocket) { window.Sound.speak("EMP Activated"); state.shockwaves.push({x: window.canvas.width/2, y: window.canvas.height, radius: 10, maxRadius: 1500, alpha: 1.0, color: "#00e5ff"}); state.shake = 30; }
-    for(let i = state.meteors.length - 1; i >= 0; i--) {
-        if(state.meteors[i].isBoss) { state.meteors[i].hp -= 5; } 
-        else { createParticles(state.meteors[i].x, state.meteors[i].y, "#00e5ff", 20); state.meteors.splice(i, 1); if(!fromSocket) state.score += 10; }
-    }
-    updateHUD(); if(!fromSocket && state.gameMode === 'party' && socket) socket.emit('use_skill', { room: currentRoomId, type: 'EMP' });
+// ==========================================
+// 💰 ECONOMY & POWER-UP BALANCE V2
+// ==========================================
+
+window.activateEMP = function() { 
+    if (Date.now() - state.lastSkillTime < 1000) return; 
+    if (state.coins >= 250) { // 📈 TUMAAS ANG PRESYO: 250
+        state.lastSkillTime = Date.now(); 
+        triggerEMP(false, false, false); 
+    } else { 
+        window.Sound.error(); window.Sound.speak("Insufficient Funds"); 
+    } 
+};
+
+window.activateSlowMo = function() { 
+    if (Date.now() - state.lastSkillTime < 1000) return; 
+    if (state.coins >= 100) { // 📈 TUMAAS ANG PRESYO: 100
+        state.lastSkillTime = Date.now(); 
+        triggerSlowMo(false, false); 
+    } else { 
+        window.Sound.error(); window.Sound.speak("Insufficient Funds"); 
+    } 
+};
+
+// ☢️ ADVANCED EMP ENGINE (With Mini-Nuke Mode & No-EXP Rule)
+window.triggerEMP = function(isFree, fromSocket = false, isMini = false, originX = window.canvas.width/2, originY = window.canvas.height) {
+    if (!isFree) { 
+        if (state.coins < 250) { window.Sound.error(); window.Sound.speak("Insufficient Funds"); return; } 
+        state.coins -= 250; 
+    }
+    
+    window.Sound.nuke();
+    let blastRadius = isMini ? 400 : 9999; // Mini Nuke (400px) vs Full EMP (Infinite)
+    let blastColor = isMini ? "orange" : "#00e5ff";
+
+    if(!fromSocket) { 
+        window.Sound.speak(isMini ? "Mini Nuke Detonated" : "EMP Activated"); 
+        state.shockwaves.push({x: originX, y: originY, radius: 10, maxRadius: isMini ? 450 : 1500, alpha: 1.0, color: blastColor}); 
+        state.shake = isMini ? 15 : 30; 
+    }
+    
+    // Wasakin ang mga sakop ng Radius
+    for(let i = state.meteors.length - 1; i >= 0; i--) {
+        let m = state.meteors[i];
+        let distance = Math.hypot(m.x - originX, m.y - originY); // Calculate range
+        
+        if (distance <= blastRadius) {
+            if(m.isBoss) { 
+                m.hp -= isMini ? 2 : 5; 
+            } else if (!m.isSupply) { 
+                createParticles(m.x, m.y, blastColor, 20); 
+                state.meteors.splice(i, 1); 
+                // 🛑 NO SCORE ADDED! WALANG: state.score += 10;
+            }
+        }
+    }
+    
+    updateHUD(); 
+    if(!fromSocket && state.gameMode === 'party' && socket) {
+        socket.emit('use_skill', { room: currentRoomId, type: 'EMP', isMini: isMini, x: originX, y: originY });
+    }
+};
+
+window.triggerSlowMo = function(isFree, fromSocket = false) {
+    if (!isFree) { 
+        if (state.coins < 100) { window.Sound.error(); window.Sound.speak("Insufficient Funds"); return; } 
+        state.coins -= 100; 
+    }
+    window.Sound.powerup();
+    if(!fromSocket) { 
+        window.Sound.speak("Time Slowed!"); 
+        state.floatingTexts.push({x: window.canvas.width/2, y: window.canvas.height/2 - 50, text: "SLOW MOTION", color: "#00e5ff", life: 2.0}); 
+    }
+    state.isSlowed = true; 
+    setTimeout(() => { 
+        state.isSlowed = false; 
+        if(!fromSocket) window.Sound.speak("Time Normal."); 
+    }, 5000);
+    updateHUD(); 
+    if(!fromSocket && state.gameMode === 'party' && socket) socket.emit('use_skill', { room: currentRoomId, type: 'SLOW' });
+};
+
+// 📦 SUPPLY CRATE UPDATE
+window.handleSupplyCrate = function(m) {
+    window.Sound.powerup(); let roll = Math.random();
+    if (roll < 0.25) { 
+        state.health = Math.min(100, state.health + 10); 
+        state.floatingTexts.push({x:m.x, y:m.y, text:"HP +10", color:"#00e5ff", life:1.5}); 
+    } 
+    else if (roll < 0.50) { 
+        state.coins += 30; 
+        state.floatingTexts.push({x:m.x, y:m.y, text:"COINS +30", color:"#fca311", life:1.5}); 
+    } 
+    else if (roll < 0.75) { 
+        window.triggerSlowMo(true); 
+        state.floatingTexts.push({x:m.x, y:m.y, text:"FREEZE CACHE!", color:"white", life:1.5}); 
+    } 
+    else { 
+        // 💥 MINI NUKE TRIGGERED (It will blast from the crate's exact location!)
+        window.triggerEMP(true, false, true, m.x, m.y); 
+        state.floatingTexts.push({x:m.x, y:m.y, text:"MINI NUKE", color:"orange", life:1.5}); 
+    }
+    createParticles(m.x, m.y, "gold", 30);
+};
+
+// 📡 MULTIPLAYER SYNC FIX (Para gumana ang Mini Nuke sa kakampi)
+if (socket) {
+    socket.on('sync_skill', (data) => {
+        if (state.gameMode === 'party' && state.isPlaying) {
+            if (data.type === 'EMP') window.triggerEMP(true, true, data.isMini, data.x, data.y); 
+            if (data.type === 'SLOW') window.triggerSlowMo(true, true);
+        }
+    });
 }
 
-function triggerSlowMo(isFree, fromSocket = false) {
-    if (!isFree) { if (state.coins < 25) { window.Sound.error(); window.Sound.speak("Insufficient Funds"); return; } state.coins -= 25; }
-    window.Sound.powerup();
-    if(!fromSocket) { window.Sound.speak("Time Slowed!"); state.floatingTexts.push({x: window.canvas.width/2, y: window.canvas.height/2 - 50, text: "SLOW MOTION", color: "#00e5ff", life: 2.0}); }
-    state.isSlowed = true; setTimeout(() => { state.isSlowed = false; if(!fromSocket) window.Sound.speak("Time Normal."); }, 5000);
-    updateHUD(); if(!fromSocket && state.gameMode === 'party' && socket) socket.emit('use_skill', { room: currentRoomId, type: 'SLOW' });
-}
 
-window.activateEMP = function() { if (Date.now() - state.lastSkillTime < 1000) return; if (state.coins >= 100) { state.lastSkillTime = Date.now(); triggerEMP(false, false); } else { window.Sound.error(); window.Sound.speak("Insufficient Funds"); } };
-window.activateSlowMo = function() { if (Date.now() - state.lastSkillTime < 1000) return; if (state.coins >= 25) { state.lastSkillTime = Date.now(); triggerSlowMo(false, false); } else { window.Sound.error(); window.Sound.speak("Insufficient Funds"); } };
+
+
 
 window.playOutroSequence = function(isWin) {
     const outro = document.getElementById('cinematic-outro');
@@ -2919,27 +3036,88 @@ window.gameOver = function() {
     }
 }
 
-window.goHome = async function() {
-    if(window.Sound) window.Sound.click();
+// ==========================================
+// 🛡️ THE MASTER EXIT ROUTER (100% RELOAD BULLETPROOF)
+// ==========================================
+window.goHome = async function(skipConfirm = false) {
+    if(window.Sound && !skipConfirm) window.Sound.click();
     
-    // Check if we need to confirm
-    if (state.isPlaying && !confirm("ABORT MISSION? Progress will be lost.")) {
+    // 1. Kumpirmasyon kung nasa kalagitnaan ng laban
+    if (!skipConfirm && typeof state !== 'undefined' && state.isPlaying && !confirm("ABORT MISSION? Progress will be lost.")) {
         return;
     }
 
-    // Database Cleanup: Remove room if host leaves, or remove player from room
-    if (currentRoomId) {
-        // ... (madaming code sa loob) ...
+    console.log("🚀 Initiating Hard Reset Sequence...");
+    
+    // 2. Ipakita ang Warp Door bilang transition effect
+    const warpDoor = document.getElementById("cyber-warp-door");
+    if (warpDoor) {
+        warpDoor.classList.remove('hidden');
+        warpDoor.style.setProperty('z-index', '2147483647', 'important'); // Pinakaharap
+        setTimeout(() => warpDoor.classList.add('active'), 10);
+        if(window.Sound) window.Sound.playTone(150, 'sawtooth', 0.6); 
     }
 
+    // 3. CLEANUP DATABASE BAGO MAG-RELOAD
+    if (typeof currentRoomId !== 'undefined' && currentRoomId) {
+        try {
+            if (typeof isHost !== 'undefined' && isHost && state.gameMode !== 'classroom') {
+                await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'closed', status: 'archived' });
+            } else if (!isHost && state.gameMode !== 'classroom') {
+                const roomRef = doc(db, "rooms", currentRoomId);
+                const roomSnap = await getDoc(roomRef);
+                if(roomSnap.exists()) {
+                    let players = roomSnap.data().players || [];
+                    players = players.filter(p => p.name !== myName);
+                    await updateDoc(roomRef, { players: players });
+                }
+            }
+        } catch(e) {}
+    }
+
+    // 4. CLEAR SESSION (Para hindi pumasok ulit sa Teacher Mode)
     if (sessionStorage.getItem('jess_session')) {
-        clearSession();
+        sessionStorage.removeItem('jess_session');
     }
 
-    document.body.classList.remove('in-combat');
-    location.reload(); 
+    // 5. THE RELOAD EXECUTION (Babalik sa Main Menu nang 100% Clean)
+    setTimeout(() => {
+        window.location.reload(); 
+    }, 1000); // 1-second delay para bumagsak ang pinto
 };
 
+// ==========================================
+// 👨‍🏫 TEACHER EXITS (ROUTES DIRECTLY TO GOHOME RELOAD)
+// ==========================================
+window.closeClassEntirely = function() {
+    if(window.Sound) window.Sound.click();
+    
+    const exitBtn = document.getElementById('btn-exit-dash');
+    if(exitBtn) { 
+        exitBtn.disabled = true; 
+        exitBtn.innerText = "EXITING..."; 
+    }
+    
+    // I-update ang Firebase bago mag-reload
+    if (typeof currentRoomId !== 'undefined' && currentRoomId) {
+        updateDoc(doc(db, "rooms", currentRoomId), { status: 'archived' }).then(() => {
+            window.goHome(true); 
+        }).catch(() => { 
+            window.goHome(true); 
+        }); 
+    } else {
+        window.goHome(true);
+    }
+};
+
+// Siguraduhing tumatawag din sa Reload ang Pause Menu Quit Button
+window.quitFromPause = function() {
+    if(window.Sound) window.Sound.click();
+    if(confirm("ABORT MISSION? Progress will be lost.")) {
+        document.getElementById("pause-modal")?.classList.add("hidden");
+        window.goHome(true); // Tatawagin ang Reload
+    }
+};
 
 
 
@@ -5125,50 +5303,56 @@ window.addEventListener('resize', fixGameResolution);
 window.addEventListener('DOMContentLoaded', fixGameResolution);
 setTimeout(fixGameResolution, 100); 
 
-// ADD: Logic for Input Jamming (Penalty)
-function triggerInputLock() {
-    if (state.inputLocked) return; // Already locked
+// ==========================================
+// 🔒 SYSTEM JAMMER (CLASSROOM PENALTY)
+// ==========================================
+window.triggerInputLock = function() {
+    if (state.inputLocked) return; // Already locked
 
-    // Safety: Clear any existing timer to prevent stacking
-    if (state.lockTimer) {
-        clearInterval(state.lockTimer);
-        state.lockTimer = null;
-    }
+    // Safety: Clear any existing timer to prevent stacking
+    if (state.lockTimer) {
+        clearInterval(state.lockTimer);
+        state.lockTimer = null;
+    }
 
-    state.inputLocked = true;
-    const input = document.getElementById("player-input");
-    if (!input) return;
+    state.inputLocked = true;
+    const input = document.getElementById("player-input");
+    if (!input) return;
 
-    // Visuals: Lock
-    input.classList.add("input-jammed");
-    input.blur(); // Remove focus
-    
-    if(window.Sound) window.Sound.error();
+    // 🔴 ABSOLUTE LOCKDOWN: Patayin ang HTML element para walang daya!
+    input.disabled = true; 
+    input.classList.add("input-jammed");
+    input.blur(); // Remove focus immediately
+    
+    if(window.Sound) window.Sound.error();
 
-    let timeLeft = 3; // 3 Seconds
-    input.value = `LOCKED (${timeLeft})`;
+    let timeLeft = 3; // 3 Seconds Penalty
+    input.value = `LOCKED (${timeLeft})`;
 
-    
+    // Countdown Timer
+    state.lockTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            input.value = `LOCKED (${timeLeft})`;
+        } else {
+            // 🟢 UNLOCK & REBOOT
+            clearInterval(state.lockTimer); 
+            state.lockTimer = null;         
+            
+            state.inputLocked = false;
+            input.disabled = false; // Payagan na ulit mag-type
+            input.classList.remove("input-jammed");
+            input.value = "";
+            input.focus(); // Ibalik ang cursor sa bata
+            
+            input.placeholder = "SYSTEM REBOOTED";
+            setTimeout(() => input.placeholder = "AWAITING INPUT...", 1000);
+        }
+    }, 1000);
+};
 
-    // CHANGE: Save the interval ID to the global state object, NOT a local variable
-    state.lockTimer = setInterval(() => {
-        timeLeft--;
-        if (timeLeft > 0) {
-            input.value = `LOCKED (${timeLeft})`;
-        } else {
-            // Unlock
-            clearInterval(state.lockTimer); // Clear the global timer
-            state.lockTimer = null;         // Clean up the ID
-            
-            state.inputLocked = false;
-            input.classList.remove("input-jammed");
-            input.value = "";
-            input.focus();
-            input.placeholder = "SYSTEM REBOOTED";
-            setTimeout(() => input.placeholder = "AWAITING INPUT...", 1000);
-        }
-    }, 1000);
-}
+// Siguraduhin ding globally accessible ito:
+function triggerInputLock() { window.triggerInputLock(); }
 
 
 
@@ -5484,6 +5668,9 @@ window.toggleSubOps = function() {
 };
 
 
+// ==========================================
+// ⌨️ STRICT KEYBOARD CONTROLLER (NO LETTERS ALLOWED)
+// ==========================================
 document.addEventListener("keydown", function(event) {
     if (!state.isPlaying || state.isPaused || state.isGlobalFreeze) return;
     if (state.inputLocked) {
@@ -5492,48 +5679,45 @@ document.addEventListener("keydown", function(event) {
         return;
     }
 
-    // 🔴 INPUT CROSS-TALK SHIELD
-    // If the player is typing in chat, search, or config, IGNORE GAME CONTROLS
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
     const activeId = document.activeElement ? document.activeElement.id : "";
-    
-    if (activeTag === "input" || activeTag === "textarea") {
-        // ONLY allow "Enter" if they are specifically in the game's targeting input box
-        if (activeId === "player-input" && event.key === "Enter") {
-            event.preventDefault();
-            if (document.activeElement.value !== "") {
-                fireLaser(document.activeElement.value);
-                document.activeElement.value = "";
-            }
-        }
-        return; // Block Space, Shift, and other hotkeys while typing elsewhere!
-    }
-
     const input = document.getElementById("player-input");
 
-    // --- A. COMMAND KEYS ---
-    if (event.key === "Enter" && input) {
-        event.preventDefault();
-        if (input.value !== "") {
-            fireLaser(input.value);
-            input.value = "";
-        }
-        return;
-    }
-
+    // --- A. HOTKEYS (HINDI MAGTA-TYPE SA INPUT BOX) ---
     if (event.code === "Space") {
-        event.preventDefault();
+        event.preventDefault(); // Pinipigilan nitong mag-type ng "space"
         if (window.activateEMP) window.activateEMP();
         return;
     }
 
     if (event.key === "Shift") {
-        event.preventDefault();
+        event.preventDefault(); 
         if (window.activateSlowMo) window.activateSlowMo();
         return;
     }
 
-    // --- B. TYPING LOGIC (Auto-Focus) ---
+    // --- B. TYPING FILTER & EXECUTION ---
+    if (activeTag === "input" || activeTag === "textarea") {
+        if (activeId === "player-input") {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                if (input.value !== "") {
+                    fireLaser(input.value);
+                    input.value = "";
+                }
+            } else {
+                // 🛡️ THE LETTER FILTER: Harangin ang lahat ng hindi numero o math signs!
+                const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','-','Backspace','Delete','ArrowLeft','ArrowRight'];
+                // Kung ang pinindot ay isang character (ex: 'a', 'b') at wala sa allowed list, i-block!
+                if (event.key.length === 1 && !allowedKeys.includes(event.key)) {
+                    event.preventDefault(); 
+                }
+            }
+        }
+        return; 
+    }
+
+    // --- C. AUTO-FOCUS TYPING ---
     const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','-','Backspace','Delete'];
     if (allowedKeys.includes(event.key)) {
         if (input && document.activeElement !== input) {
@@ -9882,16 +10066,12 @@ window.openCampaignMap = function() {
     }
 };
 
-// 2. CLOSE MAP BUTTON (Campaign -> Main Menu)
-window.closeCampaignMap = function() {
-    console.log("SYSTEM: Closing Campaign Map...");
+window.closeCampaignMap = function() { 
     if(window.Sound) window.Sound.click();
+    document.getElementById("campaign-modal")?.classList.add("hidden"); 
     
-    const campModal = document.getElementById("campaign-modal");
-    const startModal = document.getElementById("start-modal");
-    
-    if(campModal) campModal.classList.add("hidden");
-    if(startModal) startModal.classList.remove("hidden");
+    // 🟢 THE FIX: Gagamitin na rin natin ang Hard Reload Protocol kapag umalis sa Map!
+    window.goHome(true); 
 };
 
 // 3. START LEVEL BUTTON (Planet Click)
@@ -11479,130 +11659,7 @@ window.monitorClassroom = function(code) {
 };
 
 
-// ==========================================
-// 🛡️ THE ULTIMATE MASTER EXIT ROUTER (ALL ROADS LEAD HOME)
-// ==========================================
 
-// ==========================================
-// 🛡️ THE MASTER EXIT ROUTER (CLEAN SLATE RESURRECTION)
-// ==========================================
-window.goHome = async function(skipConfirm = false) {
-    if(window.Sound && !skipConfirm) window.Sound.click();
-    
-    if (!skipConfirm && state.isPlaying && !confirm("ABORT MISSION? Progress will be lost.")) {
-        return;
-    }
-
-    console.log("🚀 Initiating Tactical Warp Sequence...");
-    const warpDoor = document.getElementById("cyber-warp-door");
-    if (warpDoor) {
-        warpDoor.classList.remove('hidden');
-        setTimeout(() => warpDoor.classList.add('active'), 10);
-        if(window.Sound) window.Sound.playTone(150, 'sawtooth', 0.6); 
-    }
-
-    setTimeout(async () => {
-        // --- 1. CLEANUP DATABASE ---
-        if (currentRoomId) {
-            try {
-                if (isHost && state.gameMode !== 'classroom') {
-                    await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'closed', status: 'archived' });
-                } else if (!isHost && state.gameMode !== 'classroom') {
-                    const roomRef = doc(db, "rooms", currentRoomId);
-                    const roomSnap = await getDoc(roomRef);
-                    if(roomSnap.exists()) {
-                        let players = roomSnap.data().players || [];
-                        players = players.filter(p => p.name !== myName);
-                        await updateDoc(roomRef, { players: players });
-                    }
-                }
-            } catch(e) {}
-        }
-
-        if (sessionStorage.getItem('jess_session')) clearSession();
-
-        // --- 2. KILL GAME ENGINES ---
-        state.isPlaying = false;
-        state.isPaused = false;
-        state.isGlobalFreeze = false;
-        state.matchConcluded = true;
-        currentRoomId = null; 
-        
-        if (window.gameLoopId) cancelAnimationFrame(window.gameLoopId);
-        if (state.gameTimer) clearInterval(state.gameTimer);
-        if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
-        if (state.vsInterval) clearInterval(state.vsInterval);
-        if (state.partySyncInterval) clearInterval(state.partySyncInterval);
-        if (state.petAttackTimer) clearInterval(state.petAttackTimer);
-
-        // --- 3. PURGE ALL SCREENS (CLEAN SLATE METHOD) ---
-        const allScreens = [
-            'game-wrapper', 'teacher-dashboard', 'report-modal', 'win-modal', 
-            'awarding-modal', 'pause-modal', 'class-curtain', 'cinematic-outro', 
-            'lobby-modal', 'mission-config-modal', 'mp-menu-modal', 'agent-dossier-modal',
-            'training-modal', 'shop-modal', 'incubator-modal', 'leaderboard-modal',
-            'classroom-setup-modal', 'class-selection-modal', 'intervention-report-modal'
-        ];
-        
-        allScreens.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.add('hidden');
-                el.style.display = ''; // 🟢 Tanggalin ang inline display bug!
-            }
-        });
-
-        document.body.classList.remove('in-combat', 'dashboard-active', 'hit-stop-active', 'critical-health');
-
-        // --- 4. RESURRECT MAIN DASHBOARD (NO MORE IMPORTANT TAGS) ---
-        const startModal = document.getElementById("start-modal");
-        const authSec = document.getElementById('auth-section');
-        const profSec = document.getElementById('profile-section');
-
-        // Ibalik sa natural na CSS ang start modal
-        if(startModal) {
-            startModal.classList.remove("hidden");
-            startModal.removeAttribute('style'); // 🟢 Burahin ang mga luma at sirang inline styles!
-        }
-        
-        // Smart Routing para sa Profile / Login
-        if (currentUser || myName) {
-            if(authSec) { 
-                authSec.classList.add('hidden'); 
-                authSec.style.display = 'none'; 
-            }
-            if(profSec) { 
-                profSec.classList.remove('hidden'); 
-                profSec.removeAttribute('style'); // 🟢 I-reset para sumunod sa style.css mo!
-            }
-        } else {
-            if(authSec) { 
-                authSec.classList.remove('hidden'); 
-                authSec.removeAttribute('style'); 
-            }
-            if(profSec) { 
-                profSec.classList.add('hidden'); 
-                profSec.style.display = 'none'; 
-            }
-        }
-
-        // I-sync ang orbs
-        if(window.updateOrbsVisibility) window.updateOrbsVisibility();
-
-        // --- 5. OPEN BLAST DOORS ---
-        setTimeout(() => {
-            if (warpDoor) warpDoor.classList.remove('active');
-            if(window.Sound) {
-                window.Sound.playTone(300, 'sine', 0.5); 
-                window.Sound.stopBGM();
-                window.Sound.playBGM('menu');
-                window.Sound.speak("Welcome back.");
-            }
-            setTimeout(() => { if (warpDoor) warpDoor.classList.add('hidden'); }, 500); 
-        }, 1000); 
-
-    }, 800); 
-};
 
 // ==========================================
 // 👨‍🏫 TEACHER EXITS (ROUTES DIRECTLY TO GOHOME)
@@ -11657,31 +11714,7 @@ window.saveAndExitClass = function() {
     setTimeout(() => { window.closeClassEntirely(); }, 1000);
 };
 
-// ==========================================
-// ⚔️ MULTIPLAYER LOBBY EXITS
-// ==========================================
-window.returnToLobby = async function() {
-    if(window.Sound) window.Sound.click();
-    document.getElementById("win-modal")?.classList.add("hidden");
-    document.getElementById("report-modal")?.classList.add("hidden");
-    document.getElementById("pause-modal")?.classList.add("hidden");
-    document.getElementById("class-curtain")?.classList.add("hidden");
-    
-    const gameWrap = document.getElementById("game-wrapper");
-    if(gameWrap) { gameWrap.classList.add("hidden"); gameWrap.style.setProperty('display', 'none', 'important'); }
-    
-    document.body.classList.remove("in-combat");
-    window.cleanupGame(); 
 
-    if (isHost && currentRoomId) { await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'waiting' }); }
-    
-    if (currentRoomId) {
-        if(window.Sound) window.Sound.playBGM('menu'); 
-        window.enterLobbyUI(currentRoomId);
-    } else {
-        window.goHome(true); 
-    }
-};
 
 // ==========================================
 // 🛡️ UNIVERSAL MENU RESURRECTION (Para walang ma-stuck sa Void)
@@ -11730,13 +11763,51 @@ window.closeMultiplayerMenu = function() {
 };
 
 // ==========================================
-// 💀 PERFECTED GAME OVER LOGIC (WITH SMART RETRY)
+// ⚔️ MULTIPLAYER LOBBY EXITS (VOID FIX)
+// ==========================================
+window.returnToLobby = async function() {
+    if(window.Sound) window.Sound.click();
+    
+    // Itago ang mga nakaharang na modals
+    const modalsToHide = ["win-modal", "report-modal", "pause-modal", "class-curtain", "game-wrapper"];
+    modalsToHide.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) {
+            el.classList.add("hidden");
+            if (id === 'game-wrapper') el.style.setProperty('display', 'none', 'important');
+        }
+    });
+    
+    document.body.className = ''; // Linisin ang body classes
+    if(typeof window.cleanupGame === 'function') window.cleanupGame(); 
+
+    if (typeof isHost !== 'undefined' && isHost && currentRoomId) { 
+        await updateDoc(doc(db, "rooms", currentRoomId), { gameState: 'waiting' }); 
+    }
+    
+    if (typeof currentRoomId !== 'undefined' && currentRoomId) {
+        if(window.Sound) window.Sound.playBGM('menu'); 
+        if(typeof window.enterLobbyUI === 'function') window.enterLobbyUI(currentRoomId);
+        
+        // 🟢 FORCE LOBBY TO FRONT
+        const lobbyModal = document.getElementById("lobby-modal");
+        if (lobbyModal) {
+            lobbyModal.classList.remove("hidden");
+            lobbyModal.style.setProperty('z-index', '2147483647', 'important');
+            lobbyModal.style.setProperty('display', 'flex', 'important');
+        }
+    } else {
+        window.goHome(true); 
+    }
+};
+
+// ==========================================
+// 💀 PERFECTED GAME OVER LOGIC (INSTANT RETRY)
 // ==========================================
 window.gameOver = function() {
     if (state.matchConcluded) return; 
     state.matchConcluded = true;
-
-    document.body.classList.remove('in-combat');
+    document.body.className = ''; 
     
     if (typeof scoreInterval !== 'undefined' && scoreInterval) clearInterval(scoreInterval);
     if (state.gameTimer) clearInterval(state.gameTimer);
@@ -11754,10 +11825,13 @@ window.gameOver = function() {
                 socket.emit('send_vs_state', { room: currentRoomId, state: { meteors: [], lasers: [], health: 0, score: state.score } });
             }
         }
-        
         const winModal = document.getElementById("win-modal");
         if(winModal) {
             winModal.classList.remove("hidden");
+            // Hilahin sa harap ang Defeat Screen
+            winModal.style.setProperty('z-index', '2147483647', 'important');
+            winModal.style.setProperty('display', 'flex', 'important');
+
             const title = winModal.querySelector("h1");
             const sub = winModal.querySelector(".subtitle");
             const content = winModal.querySelector(".modal-content");
@@ -11776,9 +11850,14 @@ window.gameOver = function() {
         return; 
     }
 
-    // --- SOLO / CAMPAIGN / CLASSROOM DEFEAT ---
+    // --- SOLO / CAMPAIGN DEFEAT ---
     const reportModal = document.getElementById("report-modal");
-    if(reportModal) reportModal.classList.remove("hidden");
+    if(reportModal) {
+        reportModal.classList.remove("hidden");
+        // Hilahin sa harap ang Report Screen
+        reportModal.style.setProperty('z-index', '2147483647', 'important');
+        reportModal.style.setProperty('display', 'flex', 'important');
+    }
 
     const scoreEl = document.getElementById("rep-score");
     if(scoreEl) scoreEl.innerText = state.score;
@@ -11793,68 +11872,51 @@ window.gameOver = function() {
         const retryBtn = reportModal.querySelector('button[onclick*="startSolo"]');
         const homeBtn = reportModal.querySelector('button[onclick*="goHome"]');
         
-        // Return to Base Fix
         if(homeBtn) {
             homeBtn.onclick = function() {
                 reportModal.classList.add("hidden");
-                window.goHome(true); // Bypass popup, dadaan sa Warp Door
+                window.goHome(true); 
             };
         }
         
         if (state.gameMode === 'classroom') {
             if(aiBtn) aiBtn.style.display = 'none';
             if(homeBtn) homeBtn.style.display = 'none'; 
-            if(retryBtn) retryBtn.style.display = 'none'; // Only Teacher can retry
+            if(retryBtn) retryBtn.style.display = 'none'; 
             if(typeof window.reportProgress === 'function') window.reportProgress(true);
-
         } else {
             if(aiBtn) aiBtn.style.display = 'block'; 
-            
-            // 🟢 THE FLAWLESS RETRY BUTTON LOGIC
             if(retryBtn) { 
                 retryBtn.innerText = "🔄 RETRY MISSION"; 
                 retryBtn.onclick = function() { 
                     if(window.Sound) window.Sound.click();
                     reportModal.classList.add("hidden"); 
+                    reportModal.style.setProperty('display', 'none', 'important');
                     
-                    // Itago ang arena bago buksan ang bagong laro!
-                    const gameWrap = document.getElementById("game-wrapper");
-                    if(gameWrap) {
-                        gameWrap.classList.add("hidden");
-                        gameWrap.style.setProperty('display', 'none', 'important');
-                    }
-                    
-                    window.cleanupGame(); 
-                    
-                    // Smart Routing
+                    // 🟢 FIX: INSTANT RESTART INSTEAD OF OPENING MENUS!
                     if (state.gameMode === 'campaign') {
-                        document.body.classList.remove('in-combat');
                         window.startCampaignLevel(state.currentCampaignLevel);
                     } else {
-                        document.body.classList.remove('in-combat');
-                        window.startSolo();
+                        if(typeof startGameLogic === 'function') {
+                            startGameLogic();
+                        } else {
+                            window.goHome(true); 
+                        }
                     }
                 }; 
                 retryBtn.disabled = false;
             }
         }
     }
-
-    state.scoreSubmitted = false; 
-    const uploadBtn = document.getElementById("real-submit-btn");
-    if(uploadBtn) uploadBtn.innerText = "UPLOAD DATA TO HQ";
-
-    if (window.playOutroSequence) {
-        window.playOutroSequence(false); 
-    }
 };
 
 // ==========================================
-// 🏆 PERFECTED GAME VICTORY LOGIC
+// 🏆 PERFECTED GAME VICTORY LOGIC (INSTANT RETRY)
 // ==========================================
 window.gameVictory = function(reason) {
     if (state.matchConcluded) return; 
     state.matchConcluded = true;
+    document.body.className = ''; 
 
     state.isPlaying = false; 
     if(window.inputField) window.inputField.blur();
@@ -11866,6 +11928,9 @@ window.gameVictory = function(reason) {
     const winContent = winModal.querySelector(".modal-content");
 
     winModal.classList.remove("hidden"); 
+    winModal.style.setProperty('z-index', '2147483647', 'important');
+    winModal.style.setProperty('display', 'flex', 'important');
+    
     document.getElementById("win-score").innerText = state.score;
 
     winTitle.innerText = "VICTORY!";
@@ -11891,16 +11956,7 @@ window.gameVictory = function(reason) {
             playAgainBtn.onclick = () => {
                 if(window.Sound) window.Sound.click();
                 winModal.classList.add("hidden");
-                
-                // Itago ang arena bago buksan ang map
-                const gameWrap = document.getElementById("game-wrapper");
-                if(gameWrap) {
-                    gameWrap.classList.add("hidden");
-                    gameWrap.style.setProperty('display', 'none', 'important');
-                }
-                document.body.classList.remove('in-combat');
-                window.cleanupGame();
-                
+                winModal.style.display = 'none';
                 window.proceedCampaignVictory(); 
             }; 
         }
@@ -11911,17 +11967,16 @@ window.gameVictory = function(reason) {
             playAgainBtn.onclick = () => {
                 if(window.Sound) window.Sound.click();
                 winModal.classList.add("hidden");
+                winModal.style.display = 'none';
                 
-                const gameWrap = document.getElementById("game-wrapper");
-                if(gameWrap) {
-                    gameWrap.classList.add("hidden");
-                    gameWrap.style.setProperty('display', 'none', 'important');
+                // 🟢 FIX: INSTANT RESTART
+                if(typeof startGameLogic === 'function') {
+                    startGameLogic();
+                } else {
+                    window.goHome(true); 
                 }
-                document.body.classList.remove('in-combat');
-                window.cleanupGame();
-                
-                window.startSolo(); 
             }; 
         }
     }
 };
+
