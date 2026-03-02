@@ -14,6 +14,91 @@ const firebaseConfig = {
     measurementId: "G-QHN9HSRZ6K"
 };
 
+
+// 1. INITIATE CALL (WITH BROWSER SECURITY CHECK & TIMEOUT)
+window.initiateVoiceCall = function() {
+    console.log("Calling Target UID:", currentChatUserId);
+    if(!currentChatUserId) return alert("SYSTEM ERROR: Open a chat with an agent first.");
+    if(!socket || !socket.connected) return alert("SYSTEM ERROR: Cannot connect to comms server.");
+    
+    // 🔴 SECURITY CHECK: Bawal mag-call kung nakaharang ang Microphone sa browser!
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("MIC BLOCKED: Voice Comms requires a secure connection (HTTPS or Localhost).");
+        return;
+    }
+
+    if(window.Sound) window.Sound.click();
+    document.getElementById("chat-target-name").innerText = "CALLING...";
+    
+    // Ipadala ang signal sa Server
+    socket.emit('request_voice_call', {
+        targetUid: currentChatUserId,
+        callerName: currentUser.username || myName,
+        callerUid: currentUser.uid
+    });
+
+    // 🟢 FAILSAFE TIMEOUT: Kung walang sumagot o nag-error ang server sa loob ng 15 seconds
+    if(window.callTimeout) clearTimeout(window.callTimeout);
+    window.callTimeout = setTimeout(() => {
+        const chatName = document.getElementById("chat-target-name");
+        if (chatName && chatName.innerText === "CALLING...") {
+            chatName.innerText = "NO ANSWER";
+            if(window.Sound) window.Sound.error();
+            
+            // Ibalik sa pangalan ng player pagkatapos ng 3 seconds
+            setTimeout(() => {
+                const friend = currentUser.friends.find(f => f.uid === currentChatUserId);
+                if (chatName) chatName.innerText = friend ? friend.name : "AGENT";
+            }, 3000);
+        }
+    }, 15000);
+};
+
+// 4. WEBRTC ENGINE (WITH ERROR CATCHER)
+async function setupWebRTC(isCaller) {
+    try {
+        console.log("🎙️ Requesting Microphone Access...");
+        
+        // 🔴 Double check kung supported ng browser bago mag-request
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Browser blocked microphone access. Needs HTTPS/localhost.");
+        }
+
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        
+        localStream.getTracks().forEach(track => { peerConnection.addTrack(track, localStream); });
+
+        peerConnection.ontrack = (event) => {
+            console.log("🔊 Connecting Remote Audio Stream!");
+            let remoteAudio = document.getElementById('remote-audio');
+            if(!remoteAudio) {
+                remoteAudio = document.createElement('audio');
+                remoteAudio.id = 'remote-audio';
+                remoteAudio.autoplay = true;
+                document.body.appendChild(remoteAudio);
+            }
+            remoteAudio.srcObject = event.streams[0];
+        };
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('webrtc_ice_candidate', { targetSocket: currentCallTargetSocket, candidate: event.candidate });
+            }
+        };
+
+        if (isCaller) {
+            console.log("📤 Creating Offer...");
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('webrtc_offer', { targetSocket: currentCallTargetSocket, offer: offer });
+        }
+    } catch (e) {
+        console.error("Mic Access Denied or WebRTC Error:", e);
+        alert("SYSTEM ALERT: Microphone access is denied. Check browser permissions or ensure you are on HTTPS/Localhost.");
+        window.endVoiceCall(); // I-cancel ang buong call process
+    }
+}
 // ==========================================
 // 📺 FULLSCREEN CONTROLLER
 // ==========================================
@@ -9707,21 +9792,7 @@ const rtcConfig = {
     ]
 };
 
-// 1. INITIATE CALL
-window.initiateVoiceCall = function() {
-    console.log("Calling Target UID:", currentChatUserId);
-    if(!currentChatUserId) return alert("SYSTEM ERROR: Open a chat with an agent first.");
-    if(!socket || !socket.connected) return alert("SYSTEM ERROR: Cannot connect to comms server.");
-    
-    if(window.Sound) window.Sound.click();
-    document.getElementById("chat-target-name").innerText = "CALLING...";
-    
-    socket.emit('request_voice_call', {
-        targetUid: currentChatUserId,
-        callerName: currentUser.username || myName,
-        callerUid: currentUser.uid
-    });
-};
+
 
 // 2. SOCKET LISTENERS FOR VOICE CALL (Prevent Duplicate Listeners)
 if (socket) {
@@ -9844,45 +9915,6 @@ if (socket) {
     });
 }
 
-// 4. WEBRTC ENGINE
-async function setupWebRTC(isCaller) {
-    try {
-        console.log("🎙️ Requesting Microphone Access...");
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        peerConnection = new RTCPeerConnection(rtcConfig);
-        
-        localStream.getTracks().forEach(track => { peerConnection.addTrack(track, localStream); });
-
-        peerConnection.ontrack = (event) => {
-            console.log("🔊 Connecting Remote Audio Stream!");
-            let remoteAudio = document.getElementById('remote-audio');
-            if(!remoteAudio) {
-                remoteAudio = document.createElement('audio');
-                remoteAudio.id = 'remote-audio';
-                remoteAudio.autoplay = true;
-                document.body.appendChild(remoteAudio);
-            }
-            remoteAudio.srcObject = event.streams[0];
-        };
-
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit('webrtc_ice_candidate', { targetSocket: currentCallTargetSocket, candidate: event.candidate });
-            }
-        };
-
-        if (isCaller) {
-            console.log("📤 Creating Offer...");
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            socket.emit('webrtc_offer', { targetSocket: currentCallTargetSocket, offer: offer });
-        }
-    } catch (e) {
-        console.error("Mic Access Denied or WebRTC Error:", e);
-        alert("Microphone access is required for Voice Comms. Please allow permissions in your browser.");
-        window.endVoiceCall();
-    }
-}
 
 window.endVoiceCall = function() {
     if (currentCallTargetSocket) {
