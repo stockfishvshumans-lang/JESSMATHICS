@@ -14931,30 +14931,3 @@ body.dashboard-active #teacher-dashboard:not(.hidden) {
     opacity: 1; animation: blink 0.5s infinite; 
 }
 
-/* ==========================================
-   🧠 QUIZ FORGE STYLES
-   ========================================== */
-.quiz-forge-tab {
-    animation: fadeIn 0.3s ease-out forwards;
-}
-
-#quiz-flashcard-modal .cyber-input {
-    background: rgba(0, 255, 65, 0.05);
-    text-shadow: 0 0 10px #00ff41;
-    transition: all 0.3s;
-}
-
-#quiz-flashcard-modal .cyber-input:focus {
-    background: rgba(0, 255, 65, 0.15);
-    box-shadow: 0 0 30px rgba(0, 255, 65, 0.4);
-    transform: scale(1.05);
-}
-
-.q-input, .a-input {
-    background: #000;
-    color: #fff;
-    border: 1px solid #333;
-    padding: 8px 15px;
-    border-radius: 4px;
-    font-family: 'Rajdhani', sans-serif;
-}
